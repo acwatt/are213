@@ -224,7 +224,7 @@ We continue to use the RCT discussed above, but you no longer have any covariate
 }
 
 \begin{align*}
-\intertext{Let $M_i$ be an indicator for  of $Y_i$, i.e., $M_i=1$ if $Y_i$ is missing and $M_i=0$ if $Y_i$ is not missing. In this setting, missing at random would mean that the missing data process is independent of $Y_i$ and $D_i$. Because we have no other data to compare the distribution of $Y_i$ to, we cannot test if the missing data process is independent of $Y_i$. However, by running a regression of $M_i$ on $D_i$, we can test for linear correlation between missingness and treatment assignment. So a simple test could include runing the following regression}
+\intertext{Let $M_i$ be an indicator for  of $Y_i$, i.e., $M_i=1$ if $Y_i$ is missing and $M_i=0$ if $Y_i$ is not missing. In this setting, missing at random would mean that the missing data process is independent of $Y_i$ and $D_i$. Because we have no other data to compare the distribution of $Y_i$ to, we cannot test if the missing data process is independent of $Y_i$. However, by running a regression of $M_i$ on $D_i$, we can test for linear correlation between missingness and treatment assignment. So a simple test could include running the following regression}
 M_i = \beta_0 + \beta_1 D_i +\epsilon_i
 \intertext{and checking if $\beta_1$ is significantly different from zero. If $\beta_1$ is significantly different from zero, we have evidence that the Missing At Random assumption is violated.}
 \intertext{Under the Missing At Random assumption, the regression of $Y_i$ on $D_i$ still estimates ATE.}
