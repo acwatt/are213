@@ -132,6 +132,19 @@
 \newcommand\independent{\protect\mathpalette{\protect\independenT}{\perp}}
 \def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
 
+% Distributed as
+\makeatletter
+\newsavebox{\mybox}\newsavebox{\mysim}
+\newcommand{\distras}[1]{%
+  \savebox{\mybox}{\hbox{\kern3pt$\scriptstyle#1$\kern3pt}}%
+  \savebox{\mysim}{\hbox{$\sim$}}%
+  \mathbin{\overset{#1}{\kern\z@\resizebox{\wd\mybox}{\ht\mysim}{$\sim$}}}%
+}
+\makeatother
+
+% i.i.d
+\newcommand{\iid}{\distras{i.i.d.}}
+
 %
 \def\ssi{\succsim_i}
 \def\ssj{\succsim_j}

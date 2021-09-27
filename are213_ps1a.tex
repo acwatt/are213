@@ -1,6 +1,6 @@
 \documentclass[12pt]{article}
 \usepackage{preamble}
-\graphicspath{{pics/hw1/}}
+\graphicspath{{pics/ps1a/}}
 \begin{document}
 % \maketitle
 \lhead{Problem Set 1a}
@@ -35,6 +35,42 @@ reproduced in the lecture notes (“Snow’s Table IX”). The table reports onl
     \end{enumerate} 
 }
 
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.8\textwidth]{snow_table}
+\label{fig-1}
+\end{figure}
+
+\begin{align*}
+\intertext{Assuming that, within a region $k\in\{a, b, c\}$, the indicator of one person in household $i$ dying from Cholera $X^k_i$ is distributed as a Bernoulli random variable with probability $p_k$ -- $X^k_i\iid \text{Bernoulli}(p_k)$. Then deaths per 10,000 households in region $k$, $R_k$, is a function of the sum of i.i.d. Bernoulli random variables. Let $N_k$ be the number of houses in region $k$, then}
+R_k &= \frac{10,000}{N_k}\sum\limits_{i=1}^{N_k}X^k_i 
+    \sim  \frac{10,000}{N_k}\text{Binom}(N_k, p_k)
+\intertext{Let $Z^k\sim\text{Binom}(N_k, p_k)$. Then the variance of $R_k$ is}
+\text{var}(R_k) &= \text{var}(\frac{10,000}{N_k}Z^k) \\
+    &= \left(\frac{10,000}{N_k}\right)^2\text{var}(Z^k) \\
+    &= \left(\frac{10,000}{N_k}\right)^2 N_k\cdot p_k\cdot (1-p_k) \\
+    &= \frac{(10,000)^2}{N_k} p_k(1-p_k) \\
+\intertext{Let $ z_{\alpha}$ be the z-score at significance level $\alpha$. Then, for large enough $N_k$ (which 26,000 is probably large enough), the 95\% confidence interval for $R_k$ would be:}
+\text{CI}_{95} &= R_k \pm z_{5\%}\sqrt{\text{var}(R_k)} \\
+    &= R_k \pm z_{5\%}\sqrt{\frac{(10,000)^2}{N_k} p_k(1-p_k) } \\
+    &= R_k \pm 10,000z_{5\%}\sqrt{\frac{p_k(1-p_k)}{N_k}} \\
+\intertext{And an unbiased estimator for the probability of death $p_k$ would be the mean of the indicators:}
+\hat{p}_k &= \frac{1}{N_k}\sum\limits_{i=1}^{N_k}X^k_i = \overline{X^k_i}
+\end{align*}
+
+Calculating $\hat{p}_k$ from the Snow table, we get
+\begin{table}[h!]
+\centering
+\begin{tabular}{|c|c|c|}
+\hline
+$R_k$ & CI$_k$ lower & CI$_k$ upper \\
+\hline
+      &              &              \\
+\hline
+      &              &             \\
+\hline
+\end{tabular}
+\end{table}
 
 
 %%%%%%%%%%%%%%%%%
