@@ -177,7 +177,11 @@ The observations with missing values have been removed, bringing our number of o
     \end{enumerate} 
 }
 
-The data do not appear to be missing completely at random. MCAR implies that there is no relationship between the missing observations and the observable variables, but we can see from figure \ref{fig-2b1} that the distribution of cigarette smoking is different between observations that have 
+The data do not appear to be missing completely at random. MCAR implies that there is no relationship between the missing observations and the observable variables, but we can see from figure \ref{fig-2b1} that the distribution of cigarette smoking is different between observations that have missing drink and those that are not missing drink. We also see that most observations missing tobacco are also missing drink.
+
+We could further explore missing relationships by running regressions of the variables on the missingingness indicators for several other variables, then testing if the coefficient on the indicators is significantly different from zero. We would need to be a bit more precise, but this could produce a test of significance of a relationship with the other variables. This would at least test for MCAR. 
+
+The problem with testing MAR is that the assumption is violated when missingness depends on unobservables. This is inherently hard to test.
 
 \begin{figure}[h!]
 \centering
@@ -188,10 +192,11 @@ The data do not appear to be missing completely at random. MCAR implies that the
 
 \begin{figure}[h!]
 \centering
-\includegraphics[width=0.8\textwidth]{2b-missing_plots_cigar-vs-drink.png}
+\includegraphics[width=0.7\textwidth]{2b-missing_plots_cigar-vs-drink.png}
 \caption{Looking closer at the missingness relationship between drinking and smoking.}
 \label{fig-2b2}
 \end{figure}
+\FloatBarrier
 
 
 
