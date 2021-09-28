@@ -38,6 +38,7 @@ reproduced in the lecture notes (“Snow’s Table IX”). The table reports onl
 \begin{figure}[h!]
 \centering
 \includegraphics[width=0.8\textwidth]{snow_table}
+\caption{The orginal table from \textit{On the Mode of Communication of Cholera} (John Snow, 1855). Note the rate of deaths per 10,000 houses for the Rest of London is incorrect based on the first two columns. $\sfrac{1,422}{256,423}\cdot 10,000\approx 55.5$ not 59.}
 \label{fig-1}
 \end{figure}
 
@@ -50,27 +51,35 @@ R_k &= \frac{10,000}{N_k}\sum\limits_{i=1}^{N_k}X^k_i
     &= \left(\frac{10,000}{N_k}\right)^2\text{var}(Z^k) \\
     &= \left(\frac{10,000}{N_k}\right)^2 N_k\cdot p_k\cdot (1-p_k) \\
     &= \frac{(10,000)^2}{N_k} p_k(1-p_k) \\
-\intertext{Let $ z_{\alpha}$ be the z-score at significance level $\alpha$. Then, for large enough $N_k$ (which 26,000 is probably large enough), the 95\% confidence interval for $R_k$ would be:}
-\text{CI}_{95} &= R_k \pm z_{5\%}\sqrt{\text{var}(R_k)} \\
-    &= R_k \pm z_{5\%}\sqrt{\frac{(10,000)^2}{N_k} p_k(1-p_k) } \\
-    &= R_k \pm 10,000z_{5\%}\sqrt{\frac{p_k(1-p_k)}{N_k}} \\
+\intertext{Let $ z_{\alpha}$ be the z-score at significance level $\alpha$. Then, for large enough $N_k$ (which 26,000 is probably large enough), the $\alpha = (1-95\%)/2$ confidence interval for $R_k$ would be:}
+\text{CI}_{95} &= R_k \pm z_\alpha\sqrt{\text{var}(R_k)} \\
+    &= R_k \pm z_\alpha\sqrt{\frac{(10,000)^2}{N_k} p_k(1-p_k) } \\
+    &= R_k \pm 10,000z_\alpha\sqrt{\frac{p_k(1-p_k)}{N_k}} \\
 \intertext{And an unbiased estimator for the probability of death $p_k$ would be the mean of the indicators:}
-\hat{p}_k &= \frac{1}{N_k}\sum\limits_{i=1}^{N_k}X^k_i = \overline{X^k_i}
+\hat{p}_k &= \frac{1}{N_k}\sum\limits_{i=1}^{N_k}X^k_i 
+    = \frac{D_k}{N_k}
+    = \overline{X^k_i}
+\shortintertext{where $D_k$ is the number of deaths in region $k$ (the sum of the $X^k_i$'s).}
 \end{align*}
 
 Calculating $\hat{p}_k$ from the Snow table, we get
+
+% Table generated from ps1a.R in github repo
 \begin{table}[h!]
 \centering
-\begin{tabular}{|c|c|c|}
-\hline
-$R_k$ & CI$_k$ lower & CI$_k$ upper \\
-\hline
-      &              &              \\
-\hline
-      &              &             \\
-\hline
+\begin{tabular}{cccc}
+  \hline
+$k$ & $R_k$  & CI$_k$ lower  & CI$_k$ upper \\ 
+  \hline
+a & 315.39 & 298.27 & 332.50 \\ 
+b & 37.54 & 30.12 & 44.96 \\ 
+c & 55.46 & 52.58 & 58.33 \\ 
+   \hline
+   \hline
 \end{tabular}
 \end{table}
+
+No, the confidence intervals for regions $a$ and $b$ do not overlap.
 
 
 %%%%%%%%%%%%%%%%%
@@ -84,7 +93,17 @@ $R_k$ & CI$_k$ lower & CI$_k$ upper \\
     \end{enumerate} 
 }
 
+The critical assumption of the above calculation is the the observations in each of the regions $k$ are statistically independent of each other -- that the probability of death in one region is not affected by the probability or realization of death in the other region, or by the underlying characteristics of the population in the different regions. Because the different regions were being supplied from different water sources, then conditional on the upstream water supply not being contaminated, if we assume the water water was the source of Cholera infection, then the two groups death rates should be independent. 
 
+To support this idea, this section, from pg 75, of Snow's 1955 book is of interest:
+
+\begin{displayquote}
+Each Company supplies both rich and poor, both large houses and small; there is no difference either in the condition or occupation of the persons receiving the water of the different Companies\dots\\[-1em]
+
+\dots The experiment, too, was on the grandest scale. No fewer than three hundred thousand people of both sexes, of every age and occupation, and of every rank and station, from gentlefolks down to the very poor, were divided into two groups without their choice, and, in most cases, without their knowledge; one group being supplied with water containing the sewage of London, and, amongst it,  whatever might have come from the cholera patients, the other group having water quite free from such impurity.
+\end{displayquote}
+
+This natural experiment provided evidence that, even when the groups are essentially identical in distributions of characteristics and treatment of water supply is as good as random, that the group getting the water from downstream was statistically significantly more likely to die from Cholera.
 
 
 
@@ -119,17 +138,33 @@ variables.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \problem{2. Real Data}{
 The first order of business is to go through the code book, decide on the relevant
-variables, and process the data. This involves several steps:
-\vem
+variables, and process the data. This involves several steps: \\
     \begin{enumerate}[label=(\alph*)]
         \item Fix missing values. In the the data set several variables take on a value of, say, 9999 if missing. We have already checked for missing observations for about 2/3 of the variables. The remaining variables need to be checked and are the last 15 in the variable list (i.e. from ’cardiac’ to ’wgain’). Refer to the codebook for missing value codes. Produce an analysis data set that drops any observation with missing values.
     \end{enumerate} 
 }
 
+% table generated from code in ps1a.R in github repo
+\begin{table}[ht]
+\centering
+\caption{Missing values, by variable name.} 
+\begin{tabular}{lrr}
+  \hline
+varname & missing\_code & num\_missing \\ 
+  \hline
+herpes &   8 &   6 \\ 
+  tobacco &   9 &  65 \\ 
+  cigar &  99 & 1077 \\ 
+  cigar6 &   6 & 1077 \\ 
+  alcohol &   9 & 105 \\ 
+  drink &  99 & 2116 \\ 
+  drink5 &   5 & 2116 \\ 
+  wgain &  99 & 3048 \\ 
+   \hline
+\end{tabular}
+\end{table}
 
-
-
-
+The observations with missing values have been removed, bringing our number of observations down from 120461 to  (5851 observations dropped).
 
 %%%%%%%%%%%%%%%%%
 %     Part b   %
@@ -207,7 +242,7 @@ the following questions.\\
 \problem{}{
     \begin{enumerate}[label=(\alph*)]
     \setcounter{enumi}{3}
-        \item What does “selection on observables” impl y about the relationship between maternal smoking and unobservable determinants of birth weight conditional on the observables? Use a basic linear regression model, in conjunction with your answer to part (c), to estimate the impact of smoking and report your estimates. Under what circumstances is the average treatment effect identified?
+        \item What does ``selection on observables'' imply about the relationship between maternal smoking and unobservable determinants of birth weight conditional on the observables? Use a basic linear regression model, in conjunction with your answer to part (c), to estimate the impact of smoking and report your estimates. Under what circumstances is the average treatment effect identified?
     \end{enumerate} 
 }
 
