@@ -92,6 +92,29 @@ explore_vars = c("cigar", "drink")
 data[, explore_vars] %>% missing_pairs(position = "fill")
 data[, mvars]  %>% missing_compare()
 
+
+# Create variable "na" if any variable has missing data
+df$na <- complete.cases(df)
+table(df$na, useNA = "always")
+
+# t Test - Comparison of Means of each variable between two samples
+# (Observations with complete data vs Observations with any missing data)
+ttest_res <- lapply(names(select(df, -na)), function(x) 
+  t.test(as.formula(paste(x, "~", "na")), data = df))
+
+count <- 0
+for (i in 1:(length(names(df))-1)) {
+  if (ttest_res[[i]]$p.value < 0.05) {
+    count <- count + 1
+  }
+}
+count 
+# We see support for alternative hypotheses that there is 
+# statistical difference between the observations with and without 
+# missing observations 37 out of 48 variables at the 95% confidence level.
+
+
+
 ## PART (c) . . . . . . . . . . . . . . . . . . . . . 
 stargazer(df, title="Table 1: Summary Statistics", out="summary_stats_2c.tex")
 # For long table (across multiple pages):
@@ -107,11 +130,22 @@ stargazer(df, title="Table 1: Summary Statistics", out="summary_stats_2c.tex")
 ## PART (a) . . . . . . . . . . . . . . . . . . . . . 
 # "dbrwt" = birthweight in grams
 
+#omaps, fmaps, dbrwt, tobacco, cigar, cigar6
+test1 <- t.test(omaps~tobacco, data = df)
+test2 <- t.test(fmaps~tobacco, data = df)
+test3 <- t.test(dbrwt~tobacco, data = df)
 
+tab <- map_df(list(test1, test2, test3), tidy) %>% 
+  rename(Differences_In_Means = estimate, Mean_Maternal_Smokers = estimate1, Mean_Maternal_Non_Smokers = estimate2)
+
+print(xtable(tab, type = "latex"), file = "Q3a.tex")
 
 
 ## PART (b) . . . . . . . . . . . . . . . . . . . . . 
+df_3b <- select(df_nona, dmage, ormoth, mrace3, dmar, nlbnl, dlivord, dfage, orfath, dfeduc, csex, cardiac, lung, diabetes, herpes, chyper, tobacco)
 
+sumtable(df_3b, group = 'tobacco', group.test = TRUE)
+bal.tab(covs = df_nona, treat=tobacco, data = df_nona)
 
 
 
@@ -124,7 +158,25 @@ stargazer(df, title="Table 1: Summary Statistics", out="summary_stats_2c.tex")
 
 
 ## PART (d) . . . . . . . . . . . . . . . . . . . . . 
+reg1 <- lm(dbrwt ~ tobacco + rectype + pldel3 + birattnd + cntocpop + stresfip + dmage + 
+             ormoth + mrace3 + dmeduc + dmar + adequacy + nlbnl + dlivord + dtotord + 
+             totord9 + nprevist + disllb + isllb10 + dfage + orfath + dfeduc + 
+             weekday + csex + delmeth5 + cardiac + diabetes + herpes + chyper + 
+             preterm, data = df_nona)
 
+reg2 <- lm(omaps ~ tobacco + rectype + pldel3 + birattnd + cntocpop + stresfip + dmage +
+             ormoth + mrace3 + dmeduc + dmar + adequacy + nlbnl + dlivord + dtotord + 
+             totord9 + nprevist + disllb + isllb10 + dfage + orfath + dfeduc + 
+             weekday + csex + delmeth5 + cardiac + diabetes + herpes + chyper + 
+             preterm, data = df_nona)
+
+reg3 <- lm(fmaps ~ tobacco + rectype + pldel3 + birattnd + cntocpop + stresfip + dmage + 
+             ormoth + mrace3 + dmeduc + dmar + adequacy + nlbnl + dlivord + dtotord + 
+             totord9 + nprevist + disllb + isllb10 + dfage + orfath + dfeduc + 
+             weekday + csex + delmeth5 + cardiac + diabetes + herpes + chyper + 
+             preterm, data = df_nona)
+
+stargazer(reg1, reg2, reg3, title="Linear Regression Selection on Observables", align = TRUE)
 
 
 
