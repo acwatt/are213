@@ -35,7 +35,7 @@ reproduced in the lecture notes (“Snow’s Table IX”). The table reports onl
     \end{enumerate} 
 }
 
-\begin{figure}[h!]
+\begin{figure}[ht!]
 \centering
 \includegraphics[width=0.8\textwidth]{snow_table}
 \caption{The orginal table from \textit{On the Mode of Communication of Cholera} (John Snow, 1855). Note the rate of deaths per 10,000 houses for the Rest of London is incorrect based on the first two columns. $\sfrac{1,422}{256,423}\cdot 10,000\approx 55.5$ not 59.}
@@ -51,7 +51,7 @@ R_k &= \frac{10,000}{N_k}\sum\limits_{i=1}^{N_k}X^k_i
     &= \left(\frac{10,000}{N_k}\right)^2\text{var}(Z^k) \\
     &= \left(\frac{10,000}{N_k}\right)^2 N_k\cdot p_k\cdot (1-p_k) \\
     &= \frac{(10,000)^2}{N_k} p_k(1-p_k) \\
-\intertext{Let $ z_{\alpha}$ be the z-score at significance level $\alpha$. Then, for large enough $N_k$ (which 26,000 is probably large enough), the $\alpha = (1-95\%)/2$ confidence interval for $R_k$ would be:}
+\intertext{Let $ z_{\alpha}$ be the z-score at significance level $\alpha$. Then, for large enough $N_k$ (which 26,000 is probably large enough), the 95\% ($\alpha = (1-95\%)/2$) confidence interval for $R_k$ would be:}
 \text{CI}_{95} &= R_k \pm z_\alpha\sqrt{\text{var}(R_k)} \\
     &= R_k \pm z_\alpha\sqrt{\frac{(10,000)^2}{N_k} p_k(1-p_k) } \\
     &= R_k \pm 10,000z_\alpha\sqrt{\frac{p_k(1-p_k)}{N_k}} \\
@@ -177,20 +177,22 @@ The observations with missing values have been removed, bringing our number of o
     \end{enumerate} 
 }
 
-The data do not appear to be missing completely at random. MCAR implies that there is no relationship between the missing observations and the observable variables, but we can see from figure \ref{fig-2b1} that the distribution of cigarette smoking is different between observations that have missing drink and those that are not missing drink. We also see that most observations missing tobacco are also missing drink.
+The data do not appear to be missing completely at random. MCAR (Missing Completely at Random) implies that there is no relationship between the missing observations and the observable variables, but we can see from figure \ref{fig-2b1} that the distribution of cigarette smoking is different between observations that have missing drink and those that are not missing drink. We also see that most observations missing tobacco are also missing drink.
+
+Another crude method to see this is to create a single dummy variable for missingness in any variable. Then, using the dummy to create two sub-samples, one which has complete data, and another with any missingness, we can conduct a series of t-tests (with 5\% signficance level) on whether means of each variables are different across the two sub-samples. We reject null of equivalence on 37 out of 48 variables, giving another evidence that missing is not completely random.
 
 We could further explore missing relationships by running regressions of the variables on the missingingness indicators for several other variables, then testing if the coefficient on the indicators is significantly different from zero. We would need to be a bit more precise, but this could produce a test of significance of a relationship with the other variables. This would at least test for MCAR. 
 
 The problem with testing MAR is that the assumption is violated when missingness depends on unobservables. This is inherently hard to test.
 
-\begin{figure}[h!]
+\begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{2b-missing_plots.png}
 \caption{A plot to show the distribution of variables, broken out by missing and not missing in other variables.}
 \label{fig-2b1}
 \end{figure}
 
-\begin{figure}[h!]
+\begin{figure}[!ht]
 \centering
 \includegraphics[width=0.7\textwidth]{2b-missing_plots_cigar-vs-drink.png}
 \caption{Looking closer at the missingness relationship between drinking and smoking.}
@@ -232,7 +234,20 @@ the following questions.\\
     \end{enumerate} 
 }
 
+Denote the group with tobacco usage during pregnancy as group 1, and without tobacco usage as group 2. On average, group 2 has 0.043 and 0.013 higher APGAR scores on one and five minute versions respectively. A simple t-test demonstrates they are significant at 1 and 5\% significance levels, respectively. Furthermore, group 2 has average birth-weight 246 grams higher, significant at 1\% significance level.
 
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrrrrrrll}
+  \hline
+ & Mean\_Smoker & Mean\_NonSmoker & Diff\_Means & statistic & p.value & 95\% conf.int \\ 
+  \hline
+1m APGAR & 8.072 & 8.115 & -0.043 & -4.300 & 0.000 & [-0.062, -0.024] \\ 
+5m APGAR & 8.992 & 9.005 & -0.013 & -2.311 & 0.023 & [-0.024, -0.002] \\ 
+BWHT & 3160.306 & 3407.223 & -246.917 & -55.214 & 0.000 & [-255.683, -238.152] \\ 
+   \hline
+\end{tabular}
+\end{table}
 
 %%%%%%%%%%%%%%%%%
 %     Part b    %
@@ -245,6 +260,12 @@ the following questions.\\
     \end{enumerate} 
 }
 
+If assignment of maternal smoking was completely random, the differences in means that was reported in Q3-Part(a) would be the ATE of maternal smoking on infant birth-weight. Then, just as in any RCTs, we would see balance across two-groups on any observable variables measured before the 'hypothetical assignment' of maternal smoking. Assume treatment of smoking during pregnancy were assigned in the very early stages of pregnancy, then we must observe balance across the 'treatment' and 'control' groups of covariates either fixed (e.g. age, race) or measured before pregnancy (e.g. chronic conditions), which we deemed amounts to 15 variables in the data-set. However, the balance table below suggests that balance is generally not reached across 9 of 15 covariates based on indicator variable for maternal smoking, which clearly indicates non-random smoking patterns.
+
+\begin{figure}[h!tp]
+    \centering
+    \includegraphics[width=18cm]{3b_BalanceTable_R.png}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%
 %     Part c    %
@@ -257,6 +278,11 @@ the following questions.\\
     \end{enumerate} 
 }
 
+Generally, predetermined variables are those which are determined prior to the treatment period--in this case, prior to the decision to smoke. These are most obviously ascriptive characteristics such as race and sex, but could also variables that are clearly uncorrelated with treatment. In our case, these would be race (mrace3), sex (csex), heart condition (cardiac), diabetes (diabetes), herpes (herpes), and hypertention (chyper). 
+
+The variable that most obviously cannot be considered "predetermined" is lung issues (lung) since smoking has been proven to directly cause lung issues. Other variables like education (dfeduc) are somewhere in between predetermined and not.
+
+When running a regression, it is particularly important to control for the variables that are correlated with both treatment and birth weight if we want to isolate the causal impact of smoking on birth weight.
 
 %%%%%%%%%%%%%%%%%
 %     Part d    %
@@ -268,6 +294,250 @@ the following questions.\\
         \item What does ``selection on observables'' imply about the relationship between maternal smoking and unobservable determinants of birth weight conditional on the observables? Use a basic linear regression model, in conjunction with your answer to part (c), to estimate the impact of smoking and report your estimates. Under what circumstances is the average treatment effect identified?
     \end{enumerate} 
 }
+Selection on observables implies that maternal smoking is conditionally independent of unobserved factors (conditional on the $X$'s we have observed).
+
+If the covariates we included in our regression include all possible (relevant) covariates that are correlated with both smoking and birth weight and if the covariates of the mothers across all smoking categories share the same support, then the relationship from a regression of birth weight on smoking status will give us the true ATE  of smoking on baby weight. 
+
+Below regressions suggest that smoking decreases birthweight by approximately 218 grams with statistical significance at 1\% significance; smoking increases 1 minute and 5 minute APGAR scores, but this is statistically insignificant at all usual signifiance levels.
+
+\begin{table}[!htbp] \centering 
+  \caption{Linear Regression Selection on Observables} 
+\begin{tabular}{@{\extracolsep{5pt}}lD{.}{.}{-3} D{.}{.}{-3} D{.}{.}{-3} } 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{3}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-4} 
+\\[-1.8ex] & \multicolumn{1}{c}{dbrwt} & \multicolumn{1}{c}{omaps} & \multicolumn{1}{c}{fmaps} \\ 
+\\[-1.8ex] & \multicolumn{1}{c}{(1)} & \multicolumn{1}{c}{(2)} & \multicolumn{1}{c}{(3)}\\ 
+\hline \\[-1.8ex] 
+ tobacco & 217.986^{***} & -0.011 & -0.010 \\ 
+  & (4.753) & (0.011) & (0.006) \\ 
+  & & & \\ 
+ rectype & -47.944^{***} & -0.044^{***} & -0.016^{***} \\ 
+  & (3.867) & (0.009) & (0.005) \\ 
+  & & & \\ 
+ pldel3 & 142.614^{***} & 0.182^{***} & 0.208^{***} \\ 
+  & (14.231) & (0.032) & (0.018) \\ 
+  & & & \\ 
+ dmage & -4.559^{***} & -0.007^{***} & -0.003^{***} \\ 
+  & (0.527) & (0.001) & (0.001) \\ 
+  & & & \\ 
+ ormoth & -31.493^{***} & -0.032^{***} & -0.019^{***} \\ 
+  & (4.153) & (0.009) & (0.005) \\ 
+  & & & \\ 
+ mrace3 & -105.103^{***} & -0.074^{***} & -0.046^{***} \\ 
+  & (2.929) & (0.007) & (0.004) \\ 
+  & & & \\ 
+ delmeth5 & -10.360^{***} & -0.098^{***} & -0.032^{***} \\ 
+  & (1.643) & (0.004) & (0.002) \\ 
+  & & & \\ 
+ diabetes & -65.834^{***} & 0.165^{***} & 0.067^{***} \\ 
+  & (10.190) & (0.023) & (0.013) \\ 
+  & & & \\ 
+ chyper & 264.745^{***} & 0.266^{***} & 0.144^{***} \\ 
+  & (18.750) & (0.042) & (0.024) \\ 
+  & & & \\ 
+ 21 other covariates &  &  &  \\ 
+  not shown & & & \\   
+  & & & \\   
+ Constant & 1,558.841^{***} & 6.942^{***} & 8.099^{***} \\ 
+  & (88.273) & (0.199) & (0.112) \\ 
+  & & & \\ 
+\hline \\[-1.8ex] 
+Observations & \multicolumn{1}{c}{114,610} & \multicolumn{1}{c}{114,610} & \multicolumn{1}{c}{114,610} \\ 
+R$^{2}$ & \multicolumn{1}{c}{0.109} & \multicolumn{1}{c}{0.021} & \multicolumn{1}{c}{0.024} \\ 
+Adjusted R$^{2}$ & \multicolumn{1}{c}{0.109} & \multicolumn{1}{c}{0.021} & \multicolumn{1}{c}{0.024} \\ 
+Residual Std. Error (df = 114579) & \multicolumn{1}{c}{552.347} & \multicolumn{1}{c}{1.246} & \multicolumn{1}{c}{0.699} \\ 
+F Statistic (df = 30; 114579) & \multicolumn{1}{c}{468.596$^{***}$} & \multicolumn{1}{c}{81.881$^{***}$} & \multicolumn{1}{c}{93.051$^{***}$} \\ 
+\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{3}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%            R CODE 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\section*{The Code}
+\begin{lstlisting}[language=R]
+
+## ---------------------------
+## R version 3.6.3 (2020-02-29)
+## Script name: ps1a.R
+##
+## Purpose of script: run code necessary for ps1a fro ARE 213
+## Date Created: 2021-09-27
+##
+## ---------------------------
+
+
+## PACKAGES ===========================================
+# install.packages("pacman")
+# install.packages("plm")
+install.packages('foreign')
+install.packages('stargazer')
+install.packages("finalfit")
+library(tidyverse)
+library(foreign)
+library(xtable)
+library(stargazer)
+library(finalfit) 
+
+
+## PROBLEM 1 =========================================
+N = c(40046, 26107, 256423)
+D = c(1263, 98, 1422)
+R = c(315, 37, 59)
+
+R = D/N*10^4
+za = qnorm(0.025, lower.tail=FALSE)
+p = 1/N * D
+varR = p*(1-p)/N
+R_lower = R - 10^4*za*(varR)^0.5
+R_upper= R + 10^4*za*(varR)^0.5
+
+df = data.frame(R=R, CI_lower=R_lower, CI_upper=R_upper)
+print(xtable(df, type = "latex"))
+
+
+## PROBLEM 2 =========================================
+data = read.dta('ps1.dta')
+
+## PART (a) . . . . . . . . . . . . . . . . . . . . . 
+missing_codes = read.csv('missing_codes.csv')
+mvars = as.character(missing_codes$varname)
+missing_codes$num_missing = as.integer(0)
+for (row in 1:nrow(missing_codes)) {
+  var = as.character(missing_codes[row, "varname"])
+  code  = as.numeric(missing_codes[row, "missing_code"])
+  nmissing = as.integer(sum(data[, var] == code))
+  missing_codes$num_missing[missing_codes$varname==var] = nmissing
+  data[, var] = na_if(data[, var], code)
+}
+print(xtable(missing_codes, type = "latex", caption = 'Missing values, by variable name.'), 
+      caption.placement = 'top', include.rownames=FALSE)
+
+# Dataframe with missing dropped
+df = data[complete.cases(data), ]
+
+
+## PART (b) . . . . . . . . . . . . . . . . . . . . . 
+data %>% ff_glimpse()
+data %>% missing_plot()
+data %>% missing_pattern()
+
+for (var in colnames(data)) {
+  print('*********************************')
+  print(var)
+  print(sort(unique(data[, var])))
+}
+
+# Convert all variables with <7 unique values to factor (and 3 additional variables)
+factor_vars = c("isllb10", "birmon", "weekday")
+for (var in colnames(data)) {
+  print('*********************************')
+  print(var)
+  print(length(unique(data[, var])))
+  if (length(unique(data[!is.na(data[, var]), var])) < 7 || var %in% factor_vars) {
+    data[, var] = factor(data[, var])
+  }
+}
+
+data[, mvars] %>% missing_pairs(position = "fill")
+explore_vars = c("cigar", "drink")
+data[, explore_vars] %>% missing_pairs(position = "fill")
+data[, mvars]  %>% missing_compare()
+
+
+# Create variable "na" if any variable has missing data
+df$na <- complete.cases(df)
+table(df$na, useNA = "always")
+
+# t Test - Comparison of Means of each variable between two samples
+# (Observations with complete data vs Observations with any missing data)
+ttest_res <- lapply(names(select(df, -na)), function(x) 
+  t.test(as.formula(paste(x, "~", "na")), data = df))
+
+count <- 0
+for (i in 1:(length(names(df))-1)) {
+  if (ttest_res[[i]]$p.value < 0.05) {
+    count <- count + 1
+  }
+}
+count 
+# We see support for alternative hypotheses that there is 
+# statistical difference between the observations with and without 
+# missing observations 37 out of 48 variables at the 95% confidence level.
+
+
+
+## PART (c) . . . . . . . . . . . . . . . . . . . . . 
+stargazer(df, title="Table 1: Summary Statistics", out="summary_stats_2c.tex")
+# For long table (across multiple pages):
+# A table environment cannot be broken across pages. 
+# Delete \begin{table}\centering and \end{table}, replace tabular with longtable, 
+# move \caption and label to immediately after \begin{longtable}{..}. 
+# And add \usepackage{longtable} to the preamble, of course.
+
+
+
+
+## PROBLEM 3 =========================================
+## PART (a) . . . . . . . . . . . . . . . . . . . . . 
+# "dbrwt" = birthweight in grams
+
+#omaps, fmaps, dbrwt, tobacco, cigar, cigar6
+test1 <- t.test(omaps~tobacco, data = df)
+test2 <- t.test(fmaps~tobacco, data = df)
+test3 <- t.test(dbrwt~tobacco, data = df)
+
+tab <- map_df(list(test1, test2, test3), tidy) %>% 
+  rename(Differences_In_Means = estimate, Mean_Maternal_Smokers = estimate1, Mean_Maternal_Non_Smokers = estimate2)
+
+print(xtable(tab, type = "latex"), file = "Q3a.tex")
+
+
+## PART (b) . . . . . . . . . . . . . . . . . . . . . 
+df_3b <- select(df_nona, dmage, ormoth, mrace3, dmar, nlbnl, dlivord, dfage, orfath, dfeduc, csex, cardiac, lung, diabetes, herpes, chyper, tobacco)
+
+sumtable(df_3b, group = 'tobacco', group.test = TRUE)
+bal.tab(covs = df_nona, treat=tobacco, data = df_nona)
+
+
+
+
+## PART (c) . . . . . . . . . . . . . . . . . . . . . 
+
+
+
+
+
+
+## PART (d) . . . . . . . . . . . . . . . . . . . . . 
+reg1 <- lm(dbrwt ~ tobacco + rectype + pldel3 + birattnd + cntocpop + stresfip + dmage + 
+             ormoth + mrace3 + dmeduc + dmar + adequacy + nlbnl + dlivord + dtotord + 
+             totord9 + nprevist + disllb + isllb10 + dfage + orfath + dfeduc + 
+             weekday + csex + delmeth5 + cardiac + diabetes + herpes + chyper + 
+             preterm, data = df_nona)
+
+reg2 <- lm(omaps ~ tobacco + rectype + pldel3 + birattnd + cntocpop + stresfip + dmage +
+             ormoth + mrace3 + dmeduc + dmar + adequacy + nlbnl + dlivord + dtotord + 
+             totord9 + nprevist + disllb + isllb10 + dfage + orfath + dfeduc + 
+             weekday + csex + delmeth5 + cardiac + diabetes + herpes + chyper + 
+             preterm, data = df_nona)
+
+reg3 <- lm(fmaps ~ tobacco + rectype + pldel3 + birattnd + cntocpop + stresfip + dmage + 
+             ormoth + mrace3 + dmeduc + dmar + adequacy + nlbnl + dlivord + dtotord + 
+             totord9 + nprevist + disllb + isllb10 + dfage + orfath + dfeduc + 
+             weekday + csex + delmeth5 + cardiac + diabetes + herpes + chyper + 
+             preterm, data = df_nona)
+
+stargazer(reg1, reg2, reg3, title="Linear Regression Selection on Observables", align = TRUE)
+\end{lstlisting}
+
 
 
 \end{document}
