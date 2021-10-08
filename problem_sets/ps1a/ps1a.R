@@ -4,7 +4,7 @@
 ##
 ## Purpose of script: run code necessary for ps1a fro ARE 213
 ##
-## Author: Aaron Watt
+## Author: Aaron Watt, Seung Sung
 ## Email: aaron@acwatt.net
 ##
 ## Date Created: 2021-09-27
