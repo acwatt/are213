@@ -95,7 +95,7 @@ df = data[complete.cases(data), ]
 # Estimate the counterfactual birthweight densities with a kernel density estimator
 # See Joel's notes for kernel density estimator
 # Play around with a bandwidth starting with half the default Stata bandwidth
-# For stata bandwidht, see rkdensity.pdf in this ps1b github folder.
+# For stata bandwidht, see rkdensity.pdf page 9 in this ps1b github folder.
 # You can also run on stata with no bandwidth specified, then print the
 # default bandwidth used using `display r(bwidth)`
 # Choose the same bandwidth for all the pictures
