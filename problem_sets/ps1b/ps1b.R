@@ -10,9 +10,9 @@
 ## Date Created: 2021-10-12
 ##
 ## ---------------------------
-## Notes: Need to open Rporj in ps1b folder. This will set the working directory
-##  to this folder.
-##
+## Notes: Need to ps1b.R from os1b folder (without Rstudio being started first)
+##        if Rstudio is already started, the working directory will not be set 
+##        to the ps1b/ folder
 
 
 ## PACKAGES ====================================================================
@@ -21,11 +21,16 @@
 # install.packages('foreign')
 # install.packages('stargazer')
 # install.packages("finalfit")
+# install.packages("glmnet")
+# install.packages("jtools")
+# install.packages("Hmisc")
 library(tidyverse)
 library(foreign)
 library(xtable)
 library(stargazer)
-library(finalfit) 
+library(finalfit)
+library(glmnet)
+library(jtools)
 
 #===============================================================================
 #                                 PROBLEM 1
@@ -43,6 +48,18 @@ for (row in 1:nrow(missing_codes)) {
   missing_codes$num_missing[missing_codes$varname==var] = nmissing
   data[, var] = na_if(data[, var], code)
 }
+# Convert all variables with <7 unique values to factor (and 3 additional variables)
+factor_vars = c("isllb10", "birmon", "weekday")
+for (var in colnames(data)) {
+  if (length(unique(data[!is.na(data[, var]), var])) < 7 || var %in% factor_vars) {
+    data[, var] = factor(data[, var])
+  }
+}
+# label data
+variable_labels_df = read.csv('variable_labels.csv')
+variable_labels <- setNames(as.character(variable_labels_df$label), variable_labels_df$varname)
+data <- Hmisc::upData(data, labels = variable_labels)
+
 # Dataframe with missing dropped
 df = data[complete.cases(data), ]
 
@@ -50,12 +67,45 @@ df = data[complete.cases(data), ]
 ## PART (b) . . . . . . . . . . . . . . . . . . . . . 
 #   Estimate the smoking effects using a flexible
 #   functional form for the control variables
+df1b = df %>%
+  select(dbrwt, tobacco, rectype, pldel3, birattnd, cntocpop, stresfip, dmage, 
+         ormoth, mrace3, dmeduc, dmar, adequacy, nlbnl, dlivord, dtotord, 
+         totord9, nprevist, disllb, isllb10, dfage, orfath, dfeduc, 
+         weekday, csex, delmeth5, cardiac, diabetes, herpes, chyper, preterm)
 
 
+vartypes = sapply(df1b, class)
+vartypes
+
+
+
+# indicator vars (no higher order terms)
+vars1 = names(Filter(is.factor, select(df1b, -dbrwt)))
+
+# quantitative var (create higher order terms)
+vars2 = names(Filter(is.integer, select(df1b, -dbrwt)))
+
+
+
+df1b = df %>%
+  select(dbrwt, mrace3, csex, cardiac, diabetes, herpes, chyper)
+reg1b <- lm(
+  dbrwt ~ tobacco, polym(mrace3, csex, cardiac, diabetes, herpes, chyper, degree=2, raw=TRUE),
+  data = df)
+reg1b
+summ(reg1b)
 
 ## PART (c) . . . . . . . . . . . . . . . . . . . . . 
-#    Use the LASSO to determine which covariates to include
+#    Use LASSO to determine which covariates to include
+X = df %>%
+  select(mrace3, csex, cardiac, diabetes, herpes, chyper)
+y = df$dbrwt
+reg1c = glmnet(X, y, family="gaussian", alpha=1)
+reg1c$beta[,3]
 
+
+m2 <- do.call(polym,c(as.list(X),degree=2, raw=TRUE))
+ncol(m2)
 
 
 

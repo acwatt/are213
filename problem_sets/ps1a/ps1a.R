@@ -94,8 +94,8 @@ data[, mvars]  %>% missing_compare()
 
 
 # Create variable "na" if any variable has missing data
-df$na <- complete.cases(df)
-table(df$na, useNA = "always")
+data$na <- complete.cases(data)
+table(data$na, useNA = "always")
 
 # t Test - Comparison of Means of each variable between two samples
 # (Observations with complete data vs Observations with any missing data)
