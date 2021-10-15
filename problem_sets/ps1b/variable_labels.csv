@@ -27,7 +27,7 @@ nprevist,"total number of prenatal visits (0-48 as reported, 49=49+, 99=unknown)
 disllb,"number of months since previous birth (0-468 as stated, 777=no previous live birth, 999=unknown)"
 isllb10,"number of months since previous birth (0=no previous, 1=twins!, 2=1-11 months, …, 9=72+ months, 10=unknown)"
 dfage,"age of father in years (10-98 as reported, 99=unknown)"
-orfath,"hispanic origin of mother (0=non-hispanic, 1=mexican, 2=puerto rican, 3=cuban, 4=central or south american, 5=other hispanic, 6=unkown)"
+orfath,"hispanic origin of father (0=non-hispanic, 1=mexican, 2=puerto rican, 3=cuban, 4=central or south american, 5=other hispanic, 6=unkown)"
 dfeduc,"years of education of father (0-16 as reported, 17=17+ years, 99=unknown)"
 weekday,"day of week of birth (1=sunday, …, 7=saturday)"
 csex,"sex of child (1=male, 2=female)"
