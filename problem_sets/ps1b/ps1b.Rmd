@@ -36,6 +36,7 @@ Notes: Need to ps1b.R from os1b folder (without Rstudio being started first)
 # install.packages("glmnet")
 # install.packages("jtools")
 # install.packages("Hmisc")
+# install.packages("gglasso")
 library(tidyverse)
 library(foreign)
 library(xtable)
@@ -43,6 +44,7 @@ library(stargazer)
 library(finalfit)
 library(glmnet)
 library(jtools)  # summ() for regression summaries
+library(gglasso)  # gglasso for group lasso
 ```
 
 # Data cleaning from PS 1a
@@ -91,10 +93,9 @@ df = data[complete.cases(data), ]
 
 ```{r}
 df1b = df %>%
-  select(dbrwt, tobacco, rectype, pldel3, birattnd, cntocpop, stresfip, dmage, 
-         ormoth, mrace3, dmeduc, dmar, adequacy, nlbnl, dlivord, dtotord, 
-         totord9, nprevist, disllb, isllb10, dfage, orfath, dfeduc, 
-         weekday, csex, delmeth5, cardiac, diabetes, herpes, chyper, preterm)
+  select(dbrwt, tobacco, csex, mrace3, cardiac, diabetes, herpes, chyper, preterm,
+         dmage, dfage, dmeduc, dfeduc, ormoth, orfath, 
+         disllb, dtotord, dmar, adequacy, nprevist)
 
 # indicator vars (no higher order terms)
 vars1 = names(Filter(is.factor, select(df1b, -dbrwt)))
@@ -104,7 +105,30 @@ vars2 = names(Filter(is.integer, select(df1b, -dbrwt)))
 
 # not sure how what the easiest way to get the multi level factor variables into
 # individual dummies is...
+
+# Convert multifactor vars into indicators
+# from https://stackoverflow.com/questions/46865838/using-lasso-in-r-with-categorical-variables
+
 ```
+
+```{r}
+create_factor <- function(nb_lvl, n= 100 ){
+  factor(sample(letters[1:nb_lvl],n, replace = TRUE))}
+
+df <- data.frame(var1 = create_factor(5), 
+                 var2 = create_factor(5), 
+                 var3 = create_factor(5), 
+                 var4 = create_factor(5),
+                 var5 = rnorm(100))
+df$y = rnorm(100) + 1*df$var5
+
+y <- df$y
+x <- model.matrix( ~ ., dplyr::select(df, -y))[, -1]
+groups <- c(rep(1:4, each = 4), 5)
+fit <- gglasso(x = x, y = y, group = groups, lambda = 1)
+fit$beta
+```
+
 
 
 ## Part (c)
