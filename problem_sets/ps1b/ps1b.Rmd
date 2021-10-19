@@ -27,7 +27,7 @@ Notes: Need to ps1b.R from os1b folder (without Rstudio being started first)
 
 
 # Packages
-```{r, results='hide', message=FALSE}
+```{r packages, results='hide', message=FALSE}
 # install.packages("pacman")
 # install.packages("tidyverse")
 # install.packages("plm")
@@ -47,7 +47,7 @@ library(jtools)  # summ() for regression summaries
 ```
 
 # Data cleaning from PS 1a
-```{r}
+```{r data_cleaning}
 data = read.dta('ps1.dta')
 missing_codes = read.csv('missing_codes.csv')
 mvars = as.character(missing_codes$varname)
@@ -73,6 +73,8 @@ data <- Hmisc::upData(data, labels = variable_labels)
 
 # Dataframe with missing dropped
 df = data[complete.cases(data), ]
+# Treatment reference level
+df$tobacco <- relevel(df$tobacco, ref = "2")  # reference level: 2 = no for tobacco use during pregnancy
 ```
 
 
@@ -91,53 +93,69 @@ df = data[complete.cases(data), ]
 ## Part (b)
 **Now, consider a series estimator. Estimate the smoking effects using a flexible functional form for the control variables (e.g., higher order terms and interactions). What are the benefits and drawbacks to this approach?**
 
-```{r}
+```{r 1B}
 df1b = df %>% select(dbrwt, tobacco, csex, mrace3, preterm,
                      dmage, dfage, dmeduc, dfeduc, ormoth, orfath,
                      disllb, dtotord, dmar, adequacy, nprevist)
 
 # indicator vars (no higher order terms)
 vars1 = names(Filter(is.factor, select(df1b, -dbrwt)))
-# quantitative var (need to create higher order terms)
+# quantitative vars (need to create higher order terms)
 vars2 = names(Filter(is.integer, select(df1b, -dbrwt)))
 
-y = df1b$dbrwt
+birthweight = df1b$dbrwt
 x = df1b %>% select(-dbrwt)
-# Create dummies from factor variables and interactions with continuous variables
+# Create dummies from factor variables, all interactions, and squared continuous vars
 formula1 = as.formula(paste("~ .^2 +", paste0("I(",vars2,"^2)", collapse=' + ') ))
-x <- model.matrix(formula1, x)[, -1]
-df1b = dataframe(y = )
+xx <- model.matrix(formula1, x)[, -1]
 
 # Series Regression
-reg_1b = lm(y ~ x)
-coefficients(reg_1b)
+reg_1b = lm(birthweight ~ xx)
+# rename the coefficients
+names(reg_1b$coefficients) <- gsub("xx","",names(reg_1b$coefficients))
+```
+
+**Need to change to longtable before final submission**
+
+```
+A table enviroment cannot be broken across pages. Delete \begin{table}\centering and \end{table}, replace tabular with longtable, move \caption and label to immediately after \begin{longtable}{..}. And add \usepackage{longtable} to the preamble, of course.
+```
+```{r 1B tabl, results='asis'}
+stargazer(reg_1b, title="Series Regression", header=FALSE, single.row=TRUE, 
+          se = NULL, notes = 'SEs omitted for brevity',  type ="html", report = "vc*")  # , align = TRUE
 ```
 
 
 ## Part (c)
 **Use the LASSO to determine which covariates (and higher order terms) to include in your regression from part (b). Do you end up dropping some covariates that you had thought might be necessary to include?**
-```{r}
+```{r 1C}
 # use glmnet with alpha=1 for lasso
-reg_1c = glmnet(x, y, family="gaussian", alpha=1)
+reg_1c = glmnet(xx, birthweight, family="gaussian", alpha=1)
 # print results (Df = # of variables, %Dev = R^2)
 print(reg_1c)
-# if we wanted to limit the model to 20 variables, the 25th iteration
-#   where lambda = 12.220 gives 20 variables (and decreases in )
-choice = 25
-sum(reg_1c$beta[, choice] != 0)
-# print the 25th lasso regression coefficients
-print(reg_1c$beta[, choice])
-# print only non-zero lasso coefficients
-reg_1c$beta[,25][reg_1c$beta[,25] != 0]
-reg_1c$beta[, choice] %>% filter(.!=0)
+# Limit the model to num_vars number of variables
+num_vars = 20
+# choose lowest lambda iteration that results in num_vars non-zero variables
+i = max(which(abs(reg_1c$df - num_vars) == min(abs(reg_1c$df - num_vars))))
+lambda = reg_1c$lambda[[i]]
+print(paste0('# of variables in ', i, 'th iteration: ', sum(reg_1c$beta[, i] != 0)))
+# print the i'th lasso regression coefficients
+# print(reg_1c$beta[, i])
+
 # Plot what the coefficients are doing as we increase lambda
 plot(reg_1c, label=TRUE)
-# Each curve corresponds to a variable. It shows the path of its coefficient 
-#   against the ℓ1-norm of the whole coefficient vector as λ varies. The top axis
-#   indicates the number of nonzero coefficients at the current λ, which is the
-#   effective degrees of freedom (df) for the lasso. 
 ```
+Each curve corresponds to a variable. It shows the path of its coefficient
+  against the L1-norm of the whole coefficient vector as lambda varies. The top axis
+  indicates the number of nonzero coefficients at the current lambda, which is the
+  effective degrees of freedom (df) for the lasso.
 
+Here are the non-zero coefficients:
+```{r 1C table, results='asis'}
+knitr::kable(reg_1c$beta[, i][reg_1c$beta[, i] != 0], 
+             caption=paste0("Lasso Regression for top ", num_vars, " vars (lambda = ", lambda, ")"),
+             col.names = 'Non-zero Coefficients', align = "l", digits = 3)
+```
 
 <!-- 
 ===============================================================================
@@ -148,27 +166,83 @@ plot(reg_1c, label=TRUE)
 
 ## Part (a)
 **First create the propensity score. For our purposes let’s use a logit specification. First specify the logit using all of the “predetermined” covariates (don’t include interactions). Next, include only those “predetermined” covariates that enter significantly in the first logit specification. How comparable are the propensity scores? If they are similar does this imply that we have the “correct” set of covariates in the logit specification used for our propensity score?**
+```{r 2a1}
+# create the propensity score using logit
+# using all of the “predetermined” covariates
+df2a = df %>% select(tobacco, csex, mrace3, preterm,
+                     dmage, dfage, dmeduc, dfeduc, ormoth, orfath,
+                     disllb, dtotord, dmar, adequacy, nprevist)
+reg_2a1 <- glm(tobacco ~ ., data = df2a, family = "binomial")
 ```
-#   create the propensity score using logit
-#   using all of the “predetermined” covariates
 
-
-# then try logit with only the significant covariates
-
-
+```{r 2a1 table, results='asis'}
+stargazer(reg_2a1, title="First logit regression", header=FALSE, single.row=TRUE, type ="html")
 ```
 
+Removing sex of the child (`csex`) and prenatal adequacy (`adequacy`) from v
+
+```{r 2a2}
+# Try logit with only the significant covariates
+df2a2 = df2a %>% select(-csex, -adequacy)
+reg_2a2 <- glm(tobacco ~ ., data = df2a2, family = "binomial")
+```
+
+```{r 2a2 table, results='asis'}
+stargazer(reg_2a2, title="Second logit regression", header=FALSE, single.row=TRUE, type ="html")
+```
+
+
+```{r 2a pscores, fig.show='hide'}
+# Compare histograms of p-scores
+p1 = reg_2a1 %>% predict(df2a, type = "response")
+p2 = reg_2a2 %>% predict(df2a2, type = "response")
+```
+
+The histogram of the first predicted p-score is in orange, the second is in purple.
+So this fully-pink histogram is meant to show that there is nearly complete
+overlap in this histograms of the predicted p-scores.
+```{r}
+plot(hist(p1, plot=F), col=rgb(0,0,1,1/4), border=NA, xlim=c(0,1))  # first histogram
+plot(hist(p2, plot=F), col=rgb(1,0,0,1/4), border=NA, xlim=c(0,1), add=T)  # second
+```
+
+We can see where the differences are that are more than 0.001 and the shape of the 
+differences.
+```{r}
+threshold = 0.001
+pdiff = p1-p2
+plot(hist(p1[abs(pdiff) > threshold], plot=F), col=rgb(0,0,1,1/4), border=NA, xlim=c(0,1),
+     main=paste('Histogram of p-scores that have differences greater than', threshold))
+plot(hist(pdiff, plot=F), col=rgb(0,0,1,1/4), border=NA, main='Histogram of differences in p-scores')
+```
+
+Here's two density plots to reinforce the idea. The blue line is the density plot
+for the first p-score and the red filling is the density plot for the second.
+```{r}
+plot(density(p1), col=rgb(0,0,1), xlim=c(0,1), lwd=3,
+     main='Comparing p-score densities with and without significant variables')  # first kernal
+polygon(density(p2), col="red", border=NA, xlim=c(0,1))  # second kernal filled in
+```
+
+Note that the maximum difference between any two predicted p-scores is `r max(abs(p1-p2))`.
 
 ## Part (b)
 **Control directly for the estimated propensity scores using a regression analysis, and estimate an average treatment effect. State clearly the assumptions under which your estimate is correct.**
 
 
-```
+```{r}
 # Control for p-score in regression analysis
+df2b = df %>%
+  select(dbrwt, tobacco, csex, mrace3, preterm,
+         dmage, dfage, dmeduc, dfeduc, ormoth, orfath,
+         disllb, dtotord, dmar, adequacy, nprevist) %>%
+  mutate(pscore = p1)
+reg_2b = lm(dbrwt ~ ., data=df2b)
 
 # Estimate ATE
-
+ATE_2b = reg_2b$coefficients["tobacco1"]
 ```
+The estimated ATE of tobacco use during pregnancy is `r round(ATE_2b,3)` -- smoking during pregnancy causes a `r abs(round(ATE_2b,3))` drop in grams of the birthweight of the child. This is correct if...
 
 
 ## Part (c)
@@ -276,9 +350,8 @@ plot(reg_1c, label=TRUE)
 
 ```{r}
 # Select variables
-df5a = df %>% 
-  select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
-         dmage, mrace3, dmar, adequacy, csex, dplural)
+df5a = df %>% select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
+                     dmage, mrace3, dmar, adequacy, csex, dplural)
 
 # Run regression
 
@@ -289,9 +362,8 @@ df5a = df %>%
 
 ```{r}
 # Select vars and smoking indicator
-df5b = df %>% 
-  select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
-         dmage, mrace3, dmar, adequacy, csex, dplural)
+df5b = df %>% select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
+                     dmage, mrace3, dmar, adequacy, csex, dplural)
 
 # Run regression
 
