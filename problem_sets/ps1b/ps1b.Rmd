@@ -122,7 +122,7 @@ A table enviroment cannot be broken across pages. Delete \begin{table}\centering
 ```
 ```{r 1B tabl, results='asis'}
 stargazer(reg_1b, title="Series Regression", header=FALSE, single.row=TRUE, 
-          se = NULL, notes = 'SEs omitted for brevity',  type ="html", report = "vc*")  # , align = TRUE
+          se = NULL, notes = 'SEs omitted for brevity',  type ="text", report = "vc*")  # , align = TRUE
 ```
 
 
@@ -176,7 +176,7 @@ reg_2a1 <- glm(tobacco ~ ., data = df2a, family = "binomial")
 ```
 
 ```{r 2a1 table, results='asis'}
-stargazer(reg_2a1, title="First logit regression", header=FALSE, single.row=TRUE, type ="html")
+stargazer(reg_2a1, title="First logit regression", header=FALSE, single.row=TRUE, type ="text")
 ```
 
 Removing sex of the child (`csex`) and prenatal adequacy (`adequacy`) from v
@@ -188,7 +188,7 @@ reg_2a2 <- glm(tobacco ~ ., data = df2a2, family = "binomial")
 ```
 
 ```{r 2a2 table, results='asis'}
-stargazer(reg_2a2, title="Second logit regression", header=FALSE, single.row=TRUE, type ="html")
+stargazer(reg_2a2, title="Second logit regression", header=FALSE, single.row=TRUE, type ="text")
 ```
 
 
