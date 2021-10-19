@@ -122,7 +122,7 @@ A table enviroment cannot be broken across pages. Delete \begin{table}\centering
 ```
 ```{r 1B tabl, results='asis'}
 stargazer(reg_1b, title="Series Regression", header=FALSE, single.row=TRUE, 
-          se = NULL, notes = 'SEs omitted for brevity',  type ="html", report = "vc*")  # , align = TRUE
+          se = NULL, notes = 'SEs omitted for brevity',  type ="text", report = "vc*")  # , align = TRUE
 ```
 
 
