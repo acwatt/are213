@@ -176,7 +176,7 @@ reg_2a1 <- glm(tobacco ~ ., data = df2a, family = "binomial")
 ```
 
 ```{r 2a1 table, results='asis'}
-stargazer(reg_2a1, title="First logit regression", header=FALSE, single.row=TRUE, type ="html")
+stargazer(reg_2a1, title="First logit regression", header=FALSE, single.row=TRUE, type ="text")
 ```
 
 Removing sex of the child (`csex`) and prenatal adequacy (`adequacy`) from v
@@ -188,9 +188,32 @@ reg_2a2 <- glm(tobacco ~ ., data = df2a2, family = "binomial")
 ```
 
 ```{r 2a2 table, results='asis'}
-stargazer(reg_2a2, title="Second logit regression", header=FALSE, single.row=TRUE, type ="html")
+stargazer(reg_2a2, title="Second logit regression", header=FALSE, single.row=TRUE, type ="text")
 ```
 
+```{r Showing p-scores with actual data values HH}
+p1_df <- data.frame(p1_score = predict(reg_2a1, type = "response"), tobacco = reg_2a1$model$tobacco)
+p2_df <- data.frame(p2_score = predict(reg_2a2, type = "response"), tobacco = reg_2a2$model$tobacco)
+```
+
+```{r Histograms HH}
+labs <- paste("Actual smoking status:", c("Yes", "No"))
+p1_df %>%
+  mutate(tobacco = ifelse(tobacco == 1, labs[1], labs[2])) %>%
+  ggplot(aes(x = p1_score)) +
+  geom_histogram(color = "white") +
+  facet_wrap(~tobacco) +
+  xlab("Probability of maternal smoking") +
+  theme_bw()
+
+p2_df %>%
+  mutate(tobacco = ifelse(tobacco == 1, labs[1], labs[2])) %>%
+  ggplot(aes(x = p2_score)) +
+  geom_histogram(color = "white") +
+  facet_wrap(~tobacco) +
+  xlab("Probability of maternal smoking") +
+  theme_bw()
+```
 
 ```{r 2a pscores, fig.show='hide'}
 # Compare histograms of p-scores
@@ -226,6 +249,8 @@ polygon(density(p2), col="red", border=NA, xlim=c(0,1))  # second kernal filled 
 
 Note that the maximum difference between any two predicted p-scores is `r max(abs(p1-p2))`.
 
+Overall, the propensity scores are very similar. However, this does not imply that we have the "correct" set of covariates in the logit specification used for our propensity score. It merely shows that excluding the non-significant variables from the propensity score estimation won't affect the propensity score estimates. This doesn't suggest that we aren't missing any potentially important covariates. 
+
 ## Part (b)
 **Control directly for the estimated propensity scores using a regression analysis, and estimate an average treatment effect. State clearly the assumptions under which your estimate is correct.**
 
@@ -238,11 +263,12 @@ df2b = df %>%
          disllb, dtotord, dmar, adequacy, nprevist) %>%
   mutate(pscore = p1)
 reg_2b = lm(dbrwt ~ ., data=df2b)
-
+summary(reg_2b)
 # Estimate ATE
 ATE_2b = reg_2b$coefficients["tobacco1"]
 ```
-The estimated ATE of tobacco use during pregnancy is `r round(ATE_2b,3)` -- smoking during pregnancy causes a `r abs(round(ATE_2b,3))` drop in grams of the birthweight of the child. This is correct if...
+
+The estimated ATE of tobacco use during pregnancy is `r round(ATE_2b,3)` -- smoking during pregnancy causes a `r abs(round(ATE_2b,3))` drop in grams of the birthweight of the child. This is correct if we have unconfoundedness and we assume a constant treatment effect. 
 
 
 ## Part (c)
