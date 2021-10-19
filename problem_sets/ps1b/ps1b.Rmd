@@ -37,7 +37,6 @@ Notes: Need to ps1b.R from os1b folder (without Rstudio being started first)
 # install.packages("glmnet")
 # install.packages("jtools")
 # install.packages("Hmisc")
-# install.packages("gglasso")
 library(tidyverse)
 library(foreign)
 # library(xtable)
@@ -45,7 +44,6 @@ library(stargazer)
 library(finalfit)
 library(glmnet)
 library(jtools)  # summ() for regression summaries
-library(gglasso)  # gglasso for group lasso
 ```
 
 # Data cleaning from PS 1a
@@ -94,66 +92,50 @@ df = data[complete.cases(data), ]
 **Now, consider a series estimator. Estimate the smoking effects using a flexible functional form for the control variables (e.g., higher order terms and interactions). What are the benefits and drawbacks to this approach?**
 
 ```{r}
-df1b = df %>%
-  select(dbrwt, tobacco, csex, mrace3, preterm,)
-         # dmage, dfage, dmeduc, dfeduc, ormoth, orfath, 
-         # disllb, dtotord, dmar, adequacy, nprevist)
+df1b = df %>% select(dbrwt, tobacco, csex, mrace3, preterm,
+                     dmage, dfage, dmeduc, dfeduc, ormoth, orfath,
+                     disllb, dtotord, dmar, adequacy, nprevist)
 
 # indicator vars (no higher order terms)
 vars1 = names(Filter(is.factor, select(df1b, -dbrwt)))
-
-# quantitative var (create higher order terms)
+# quantitative var (need to create higher order terms)
 vars2 = names(Filter(is.integer, select(df1b, -dbrwt)))
-for (var in vars2) {
-  # squared
-  df1b[, paste0(var,'_2')] = df1b[, var]^2
-  # cubed
-  # df1b[, paste0(var,'_3')] = df1b[, var]^3
-}
 
+y = df1b$dbrwt
+x = df1b %>% select(-dbrwt)
+# Create dummies from factor variables and interactions with continuous variables
+formula1 = as.formula(paste("~ .^2 +", paste0("I(",vars2,"^2)", collapse=' + ') ))
+x <- model.matrix(formula1, x)[, -1]
+df1b = dataframe(y = )
 
-
-# not sure how what the easiest way to get the multi level factor variables into
-# individual dummies is...
-
-# Convert multifactor vars into indicators
-# from https://stackoverflow.com/questions/46865838/using-lasso-in-r-with-categorical-variables
-
+# Series Regression
+reg_1b = lm(y ~ x)
+coefficients(reg_1b)
 ```
-
-```{r}
-create_factor <- function(nb_lvl, n= 100 ){
-  factor(sample(letters[1:nb_lvl],n, replace = TRUE))}
-
-df <- data.frame(var1 = create_factor(5), 
-                 var2 = create_factor(5), 
-                 var3 = create_factor(5), 
-                 var4 = create_factor(5),
-                 var5 = rnorm(100))
-df$y = rnorm(100) + 1*df$var5
-
-y <- df$y
-x <- model.matrix( ~ ., dplyr::select(df, -y))[, -1]
-groups <- c(rep(1:4, each = 4), 5)
-fit <- gglasso(x = x, y = y, group = groups, lambda = 1)
-fit$beta
-```
-
 
 
 ## Part (c)
 **Use the LASSO to determine which covariates (and higher order terms) to include in your regression from part (b). Do you end up dropping some covariates that you had thought might be necessary to include?**
-```
+```{r}
 # use glmnet with alpha=1 for lasso
-X = df %>%
-  select(mrace3, csex, cardiac, diabetes, herpes, chyper)
-y = df$dbrwt
-reg1c = glmnet(X, y, family="gaussian", alpha=1)
-reg1c$beta[,3]
-
-
-m2 <- do.call(polym,c(as.list(X),degree=2, raw=TRUE))
-ncol(m2)
+reg_1c = glmnet(x, y, family="gaussian", alpha=1)
+# print results (Df = # of variables, %Dev = R^2)
+print(reg_1c)
+# if we wanted to limit the model to 20 variables, the 25th iteration
+#   where lambda = 12.220 gives 20 variables (and decreases in )
+choice = 25
+sum(reg_1c$beta[, choice] != 0)
+# print the 25th lasso regression coefficients
+print(reg_1c$beta[, choice])
+# print only non-zero lasso coefficients
+reg_1c$beta[,25][reg_1c$beta[,25] != 0]
+reg_1c$beta[, choice] %>% filter(.!=0)
+# Plot what the coefficients are doing as we increase lambda
+plot(reg_1c, label=TRUE)
+# Each curve corresponds to a variable. It shows the path of its coefficient 
+#   against the ℓ1-norm of the whole coefficient vector as λ varies. The top axis
+#   indicates the number of nonzero coefficients at the current λ, which is the
+#   effective degrees of freedom (df) for the lasso. 
 ```
 
 
