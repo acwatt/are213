@@ -22,6 +22,11 @@ Notes: Need to ps1b.R from os1b folder (without Rstudio being started first)
        to the ps1b/ folder
 -->
 
+```{r Settings, echo=FALSE}
+# stargazer table type (html, latex, or text)
+# Change to latex when outputting to PDF, html when outputting to html
+table_type = "text"
+```
 
 
 
@@ -122,7 +127,7 @@ A table enviroment cannot be broken across pages. Delete \begin{table}\centering
 ```
 ```{r 1B tabl, results='asis'}
 stargazer(reg_1b, title="Series Regression", header=FALSE, single.row=TRUE, 
-          se = NULL, notes = 'SEs omitted for brevity',  type ="text", report = "vc*")  # , align = TRUE
+          se = NULL, notes = 'SEs omitted for brevity',  type = table_type, report = "vc*")  # , align = TRUE
 ```
 
 
@@ -176,10 +181,10 @@ reg_2a1 <- glm(tobacco ~ ., data = df2a, family = "binomial")
 ```
 
 ```{r 2a1 table, results='asis'}
-stargazer(reg_2a1, title="First logit regression", header=FALSE, single.row=TRUE, type ="text")
+stargazer(reg_2a1, title="First logit regression", header=FALSE, single.row=TRUE, type=table_type)
 ```
 
-Removing sex of the child (`csex`) and prenatal adequacy (`adequacy`) from v
+Removing sex of the child (`csex`) and prenatal adequacy (`adequacy`) from regressors (not significant).
 
 ```{r 2a2}
 # Try logit with only the significant covariates
@@ -188,7 +193,7 @@ reg_2a2 <- glm(tobacco ~ ., data = df2a2, family = "binomial")
 ```
 
 ```{r 2a2 table, results='asis'}
-stargazer(reg_2a2, title="Second logit regression", header=FALSE, single.row=TRUE, type ="text")
+stargazer(reg_2a2, title="Second logit regression", header=FALSE, single.row=TRUE, type=table_type)
 ```
 
 ```{r Showing p-scores with actual data values HH}
@@ -215,7 +220,7 @@ p2_df %>%
   theme_bw()
 ```
 
-```{r 2a pscores, fig.show='hide'}
+```{r 2a pscores}
 # Compare histograms of p-scores
 p1 = reg_2a1 %>% predict(df2a, type = "response")
 p2 = reg_2a2 %>% predict(df2a2, type = "response")
@@ -243,8 +248,8 @@ Here's two density plots to reinforce the idea. The blue line is the density plo
 for the first p-score and the red filling is the density plot for the second.
 ```{r}
 plot(density(p1), col=rgb(0,0,1), xlim=c(0,1), lwd=3,
-     main='Comparing p-score densities with and without significant variables')  # first kernal
-polygon(density(p2), col="red", border=NA, xlim=c(0,1))  # second kernal filled in
+     main='Comparing p-score densities with and without significant variables')  # first kernel
+polygon(density(p2), col="red", border=NA, xlim=c(0,1))  # second kernel filled in
 ```
 
 Note that the maximum difference between any two predicted p-scores is `r max(abs(p1-p2))`.
@@ -272,22 +277,66 @@ The estimated ATE of tobacco use during pregnancy is `r round(ATE_2b,3)` -- smok
 
 
 ## Part (c)
-**As discussed in class, one can use the estimated propensity scores to reweight the outcomes of non- smokers and estimate the average treatment effect. Compute an estimate of the average treatment effect and the “effect of the treatment on the treated” by appropriate reweighting of the data.**
+**As discussed in class, one can use the estimated propensity scores to reweight the outcomes of non-smokers and estimate the average treatment effect. Compute an estimate of the average treatment effect and the “effect of the treatment on the treated” by appropriate reweighting of the data.**
+
+Imbens tells us that, after dividing by the sum of the weights in each treatment group, the feasible propensity-score-weighted ATE is:
+\[
+\hat\tau_{ATE} = \frac{\sum\limits_{i=1}^N\dfrac{Y_i\cdot D_i}
+   {\hat p(X_i)}}{\sum\limits_{i=1}^N\dfrac{D_i}{\hat p(X_i)}} - 
+   \frac{\sum\limits_{i=1}^N\dfrac{(1-D_i)\cdot Y_i}{1-\hat p(X_i)}}
+   {\sum\limits_{i=1}^N\dfrac{1-D_i}{1-\hat p(X_i)}}
+\]
 
 ```{r}
 # Reweight data using p-score to weight
-
+df2c = df2b %>% 
+  mutate(pscore = predict(reg_2a1, ., type = "response")) %>%
+  mutate(weight = ifelse(tobacco == 1, 1/pscore, 1/(1-pscore)))
+t_norm = sum((df2c$tobacco==1)*df2c$weight)  # smokers
+c_norm = sum((df2c$tobacco==2)*df2c$weight)  # non-smokers
 
 # Estimate ATE
-
-
-# Estimate TOT with rewieghted data
-
+ATE2c = sum((df2c$tobacco==1)*df2c$weight*df2c$dbrwt / t_norm) - sum((df2c$tobacco==2)*df2c$weight*df2c$dbrwt / c_norm)
 ```
+The propensity-score-weighted estimated average treatment effect is `r round(ATE2c,2)`.
 
+Imbens (2004) in a review article states that the efficient TOT estimator of $\tau_{treated}$ is derived by weighting each observation by it's propensity score. This makes intuitive sense because we want to weight-up the observations that look like the treated observations and weight-down the observations that look like the untreated. After cancelling out the propensity score in the first term and deviding by the sum of the weights for each treatment group, we get:
+\[
+\hat\tau_{ATT} = \frac{1}{N_T}\sum\limits_{i:D_i=1}Y_i - 
+   \frac{\sum\limits_{i:D_i=0}Y_i\dfrac{\hat p(X_i)}{1-\hat p(X_i)}}
+   {\sum\limits_{i:D_i=0}\dfrac{\hat p(X_i)}{1-\hat p(X_i)}}
+= \frac{\sum\limits_{i=1}^ND_iY_i}{\sum\limits_{i=1}^ND_i} - 
+   \frac{\sum\limits_{i=1}^N\dfrac{(1-D_i)\hat p(X_i)Y_i}{1-\hat p(X_i)}}
+   {\sum\limits_{i=1}^N\dfrac{(1-D_i)\hat p(X_i)}{1-\hat p(X_i)}}
+\]
+```{r}
+# Reweight data for ATT
+df2c = df2c %>% 
+  mutate(weight2 = ifelse(tobacco == 1, 1, pscore/(1-pscore)))
+t_norm = sum((df2c$tobacco==1)*df2c$weight2)  # smokers
+c_norm = sum((df2c$tobacco==2)*df2c$weight2)  # non-smokers
+
+# Estimate ATT
+ATT2c = sum((df2c$tobacco==1)*df2c$weight2*df2c$dbrwt / t_norm) - sum((df2c$tobacco==2)*df2c$weight2*df2c$dbrwt / c_norm)
+```
+The propensity-score-weighted estimated average treatment effect on the treated is `r round(ATT2c,2)`. If we take this result as significantly different from the ATE, then the effect of smoking on birthweight is stronger for those who look like smokers than it is in the general population. Perhaps smoking exacerbates other issues that cause lower birthweight?
 
 ## Part (d)
 **Estimate the counterfactual densities relevant for the above part with a kernel density estimator. That is, estimate the density of birthweight (or log birthweight) if everyone smoked and again if no one smoked. Hint: Consider directly applying the Hirano, Imbens, and Ridder propensity score reweighting scheme in the context of estimating the densities of the treated and control groups (rather than the means of the treated and control groups). Stata has very useful preprogrammed commands. In addition to using the preprogrammed Stata command to compute/graph the kernel density over the entire range of birthweight, please also calculate by hand the kernel estimator at birthweight equals 3,000 grams (and provide the code you wrote that shows the calculation of the kernel estimator at this single point). Play around with a bandwidth starting with half the default Stata bandwidth. Choose the same bandwidth for all the pictures, and produce a (beautiful, production quality) figure depicting both densities.**
+
+Morgan and Todd (2008) gives us the weights for ATT and ATC (average treatment effect on the controls). These come from weighting observations by $1-p(X_i)$ instead of $p(X_i)$ to weight toward the control group:
+
+\[
+\begin{aligned}
+\text{For }D_i=1: &\quad w_{i,ATT} = 1\\
+\text{For }D_i=0: &\quad w_{i,ATT} = \frac{\hat p(X_i)}{1-\hat p(X_i)}\\
+\text{and} \qquad&\\
+\text{For }D_i=1: &\quad w_{i,ATC} = \frac{1-\hat p(X_i)}{\hat p(X_i)}\\
+\text{For }D_i=0: &\quad w_{i,ATC} = 1 \\
+\end{aligned}
+\]
+
+We can use weighted kernel density estimation with the weights above:
 
 ```{r}
 # Estimate the counterfactual birthweight densities with a kernel density estimator
@@ -298,8 +347,70 @@ The estimated ATE of tobacco use during pregnancy is `r round(ATE_2b,3)` -- smok
 # default bandwidth used using `display r(bwidth)`
 # Choose the same bandwidth for all the pictures
 
+# Stata default bandwidth
+m = min(var(df2c$dbrwt), IQR(df2c$dbrwt)/1.349)
+h_stata = 0.9*m/nrow(df2c)^(1/5)  # 44.14637 grams
+
+# Define the kernal
+kernel_fun <- function(x, h){ # Epanechnikov Kernel with bandwidth h
+  return((3/4)*(1-(x/h)^2)*as.numeric(abs(x/h)<1))
+}
+
+density_fun <- function(x, X, w, h) { # Kernel density estimate with data X and weights w
+  return(sum(w/(length(X)*h)*sapply(x-X, kernel_fun, h=h)))
+}
+
+# Estimate density if all were smokers
+x_vec = seq(min(df2d$dbrwt), max(df2d$dbrwt), length.out=100)
+df2d = df2c %>%
+  mutate(w1 = (tobacco==1) + pscore*(tobacco==2)/(1-pscore)) %>%
+  mutate(w1 = w1*nrow(df2c) / sum(w1)) %>%
+  mutate(w2 = (1-pscore)*(tobacco==1)/pscore + (tobacco==2)) %>%
+  mutate(w2 = w2*nrow(df2c) / sum(w2))
+
+# dens1 = sapply(x_vec, density_fun, X=df2d$dbrwt, w=df2d$w1, h=h_stata)
+###############################################
+###############################################
+# cannot figure out why the sapply function is not working
+# with density_fun and arguments
+
+myfun <- function(x,X,w,h){return(x+X+w+h)}
+sapply(x_vec, density_fun)
+sapply(x_vec, myfun, X=df2d$dbrwt, w=df2d$w1, h=h_stata)
+
+h=80
+dens1 = density(df2d$dbrwt,
+                bw=h,  # stata default
+                kernel="epanechnikov",
+                weights=df2d$w1)
+dens2 = density(df2d$dbrwt,
+                bw=h,  # stata default
+                kernel="epanechnikov",
+                weights=df2d$w2)
+dens = rbind(data.frame(birthweight=dens1$x, f=dens1$y, smoker="yes"),
+          data.frame(birthweight=dens2$x, f=dens2$y, smoker="no"))
+
+p <- ggplot(dens, aes(x = birthweight, y = f)) +
+  geom_polygon(aes(fill=smoker, group = smoker), alpha = 0.5)
+p
+
+
+
+ggplot(df2d, aes(x=dbrwt, y=w1)) + geom_point(df2d, aes(x=dbrwt, y=w2))
+ggplot(data = df2d, aes(dbrwt, w1)) + 
+     geom_point(aes(x = dbrwt, y = w1), legend=  TRUE,  xlab="X", ylab="Y", colour=alpha('red', 0.05)) + 
+     geom_point(aes(x = dbrwt, y = w2), legend = TRUE, colour=alpha('blue', 0.05) )
+
 
 # Graph both kernel densities over range of birthweight in the same plot
+plot(dens1, col=rgb(0, 0, 1, 0.5), lwd=3,
+     main='Comparing counterfactual birthweight densities')  # first kernel
+plot(dens2, col=rgb(0, 0, 1, 0.5), lwd=3, add=T)  # second kernel
+ggplot(df2d, aes(x=value, fill=variable)) + geom_density(alpha=0.25)
+
+plot(density(df2d$w2), col=rgb(0,0,1), xlim=c(0,1), lwd=3,
+     main='Comparing p-score densities with and without significant variables')  # first kernel
+polygon(density(df2d$w1), col=rgb(1,0,0,0.5), border=NA, xlim=c(0,1))  # second kernel filled in
 
 
 # calculate the kernel estimator at birthweight equals 3,000 grams
