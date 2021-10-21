@@ -122,7 +122,7 @@ A table enviroment cannot be broken across pages. Delete \begin{table}\centering
 ```
 ```{r 1B tabl, results='asis'}
 stargazer(reg_1b, title="Series Regression", header=FALSE, single.row=TRUE, 
-          se = NULL, notes = 'SEs omitted for brevity',  type ="text", report = "vc*")  # , align = TRUE
+          se = NULL, notes = 'SEs omitted for brevity',  type ="html", report = "vc*")  # , align = TRUE
 ```
 
 
@@ -276,7 +276,23 @@ The estimated ATE of tobacco use during pregnancy is `r round(ATE_2b,3)` -- smok
 
 ```{r}
 # Reweight data using p-score to weight
+df2c <- df %>% 
+  select(dbrwt, tobacco, csex, mrace3, preterm,
+         dmage, dfage, dmeduc, dfeduc, ormoth, orfath,
+         disllb, dtotord, dmar, adequacy, nprevist) %>% 
+  mutate(pscore = p1, 
+         smoking = ifelse(tobacco == 1, 1, 0)), weight = 1/pscore * smoking + 1/(1-pscore) * (1-smoking))
 
+lalonde <- lalonde %>%
+   mutate(propensity_gam = predict(mod, type = "response"),
+          weight_gam = 1 / propensity_gam * treat + 
+                       1 / (1 - propensity_gam) * (1 - treat))
+
+ggplot(lalonde, aes(x = weight_gam, fill = as.factor(treat))) +
+   geom_density(alpha = 0.5, colour = "grey50") +
+   geom_rug() +
+   scale_x_log10(breaks = c(1, 5, 10, 20, 40)) +
+   ggtitle("Distribution of inverse probability weights")
 
 # Estimate ATE
 
