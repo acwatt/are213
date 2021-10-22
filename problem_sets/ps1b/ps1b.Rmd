@@ -49,6 +49,7 @@ library(stargazer)
 library(finalfit)
 library(glmnet)
 library(jtools)  # summ() for regression summaries
+library(Hmisc)
 ```
 
 # Data cleaning from PS 1a
@@ -127,11 +128,7 @@ A table enviroment cannot be broken across pages. Delete \begin{table}\centering
 ```
 ```{r 1B tabl, results='asis'}
 stargazer(reg_1b, title="Series Regression", header=FALSE, single.row=TRUE, 
-<<<<<<< HEAD
-          se = NULL, notes = 'SEs omitted for brevity',  type ="html", report = "vc*")  # , align = TRUE
-=======
           se = NULL, notes = 'SEs omitted for brevity',  type = table_type, report = "vc*")  # , align = TRUE
->>>>>>> ac7ff6d6a51f031fbbbc09cf00065ea316480008
 ```
 
 
@@ -293,31 +290,11 @@ Imbens tells us that, after dividing by the sum of the weights in each treatment
 
 ```{r}
 # Reweight data using p-score to weight
-<<<<<<< HEAD
-df2c <- df %>% 
-  select(dbrwt, tobacco, csex, mrace3, preterm,
-         dmage, dfage, dmeduc, dfeduc, ormoth, orfath,
-         disllb, dtotord, dmar, adequacy, nprevist) %>% 
-  mutate(pscore = p1, 
-         smoking = ifelse(tobacco == 1, 1, 0)), weight = 1/pscore * smoking + 1/(1-pscore) * (1-smoking))
-
-lalonde <- lalonde %>%
-   mutate(propensity_gam = predict(mod, type = "response"),
-          weight_gam = 1 / propensity_gam * treat + 
-                       1 / (1 - propensity_gam) * (1 - treat))
-
-ggplot(lalonde, aes(x = weight_gam, fill = as.factor(treat))) +
-   geom_density(alpha = 0.5, colour = "grey50") +
-   geom_rug() +
-   scale_x_log10(breaks = c(1, 5, 10, 20, 40)) +
-   ggtitle("Distribution of inverse probability weights")
-=======
 df2c = df2b %>% 
   mutate(pscore = predict(reg_2a1, ., type = "response")) %>%
   mutate(weight = ifelse(tobacco == 1, 1/pscore, 1/(1-pscore)))
 t_norm = sum((df2c$tobacco==1)*df2c$weight)  # smokers
 c_norm = sum((df2c$tobacco==2)*df2c$weight)  # non-smokers
->>>>>>> ac7ff6d6a51f031fbbbc09cf00065ea316480008
 
 # Estimate ATE
 ATE2c = sum((df2c$tobacco==1)*df2c$weight*df2c$dbrwt / t_norm) - sum((df2c$tobacco==2)*df2c$weight*df2c$dbrwt / c_norm)
@@ -483,7 +460,31 @@ polygon(density(df2d$w1), col=rgb(1,0,0,0.5), border=NA, xlim=c(0,1))  # second 
 **A potentially more informative way to describe how birth weight affects smoking is to estimate the “non-parametric” conditional mean of birth weight as a function of the estimated probability of smoking, separately for smokers and non-smokers on the same graph. To do so, divide the data from smokers into 100 approximately equally spaced bins based on the estimated propensity score. Do the same for nonsmokers. Use the blocking estimator we discussed in class. Interpret your findings and relate them to the results in (2b).**
 
 ```{r}
+df3 <- df %>% 
+  select(dbrwt, tobacco) %>%
+  mutate(pscore = p1, smoke = ifelse(tobacco == 1, 1,0), block) %>%
+  select(-tobacco) %>% 
+  arrange(pscore)
 
+df3_smoke <- df3 %>%
+  filter(smoke == 1) %>%
+  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
+
+df3_nosmoke <- df3 %>%
+  filter(smoke == 0) %>%
+  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
+
+summary(df3$pscore_bin %>% as.numeric())
+
+df3 %>%
+      group_by(pscore_bin) %>%
+      summarise(n = n()) %>%
+      mutate(totalN = (cumsum(n)),
+             percent = round((n / sum(n)), 3),
+             cumpercent = round(cumsum(freq = n / sum(n)), 3))
+
+
+  
 ```
 
 
