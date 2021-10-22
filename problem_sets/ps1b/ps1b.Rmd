@@ -42,6 +42,7 @@ table_type = "text"
 # install.packages("glmnet")
 # install.packages("jtools")
 # install.packages("Hmisc")
+install.packages("rbin")
 library(tidyverse)
 library(foreign)
 # library(xtable)
@@ -97,6 +98,7 @@ df$tobacco <- relevel(df$tobacco, ref = "2")  # reference level: 2 = no for toba
 
 
 ## Part (b)
+
 **Now, consider a series estimator. Estimate the smoking effects using a flexible functional form for the control variables (e.g., higher order terms and interactions). What are the benefits and drawbacks to this approach?**
 
 ```{r 1B}
@@ -128,11 +130,12 @@ A table enviroment cannot be broken across pages. Delete \begin{table}\centering
 ```
 ```{r 1B tabl, results='asis'}
 stargazer(reg_1b, title="Series Regression", header=FALSE, single.row=TRUE, 
-          se = NULL, notes = 'SEs omitted for brevity',  type = table_type, report = "vc*")  # , align = TRUE
+          se = NULL, notes = 'SEs omitted for brevity',  type = table_type, report = "vc*")
 ```
 
 
 ## Part (c)
+
 **Use the LASSO to determine which covariates (and higher order terms) to include in your regression from part (b). Do you end up dropping some covariates that you had thought might be necessary to include?**
 ```{r 1C}
 # use glmnet with alpha=1 for lasso
@@ -168,9 +171,11 @@ knitr::kable(reg_1c$beta[, i][reg_1c$beta[, i] != 0],
 =============================================================================== 
 -->
 # Problem 2
+
 **Describe the propensity score approach to the problem of estimating the average causal effect of smoking when the treatment is randomly assigned conditional on the observables. How does it reduce the dimensionality problem of multivariate matching? Try a few ways to estimate the effects of maternal smoking on birthweight:**
 
 ## Part (a)
+
 **First create the propensity score. For our purposes let’s use a logit specification. First specify the logit using all of the “predetermined” covariates (don’t include interactions). Next, include only those “predetermined” covariates that enter significantly in the first logit specification. How comparable are the propensity scores? If they are similar does this imply that we have the “correct” set of covariates in the logit specification used for our propensity score?**
 ```{r 2a1}
 # create the propensity score using logit
@@ -258,6 +263,7 @@ Note that the maximum difference between any two predicted p-scores is `r max(ab
 Overall, the propensity scores are very similar. However, this does not imply that we have the "correct" set of covariates in the logit specification used for our propensity score. It merely shows that excluding the non-significant variables from the propensity score estimation won't affect the propensity score estimates. This doesn't suggest that we aren't missing any potentially important covariates. 
 
 ## Part (b)
+
 **Control directly for the estimated propensity scores using a regression analysis, and estimate an average treatment effect. State clearly the assumptions under which your estimate is correct.**
 
 
@@ -278,6 +284,7 @@ The estimated ATE of tobacco use during pregnancy is `r round(ATE_2b,3)` -- smok
 
 
 ## Part (c)
+
 **As discussed in class, one can use the estimated propensity scores to reweight the outcomes of non-smokers and estimate the average treatment effect. Compute an estimate of the average treatment effect and the “effect of the treatment on the treated” by appropriate reweighting of the data.**
 
 Imbens tells us that, after dividing by the sum of the weights in each treatment group, the feasible propensity-score-weighted ATE is:
@@ -323,6 +330,7 @@ ATT2c = sum((df2c$tobacco==1)*df2c$weight2*df2c$dbrwt / t_norm) - sum((df2c$toba
 The propensity-score-weighted estimated average treatment effect on the treated is `r round(ATT2c,2)`. If we take this result as significantly different from the ATE, then the effect of smoking on birthweight is stronger for those who look like smokers than it is in the general population. Perhaps smoking exacerbates other issues that cause lower birthweight?
 
 ## Part (d)
+
 **Estimate the counterfactual densities relevant for the above part with a kernel density estimator. That is, estimate the density of birthweight (or log birthweight) if everyone smoked and again if no one smoked. Hint: Consider directly applying the Hirano, Imbens, and Ridder propensity score reweighting scheme in the context of estimating the densities of the treated and control groups (rather than the means of the treated and control groups). Stata has very useful preprogrammed commands. In addition to using the preprogrammed Stata command to compute/graph the kernel density over the entire range of birthweight, please also calculate by hand the kernel estimator at birthweight equals 3,000 grams (and provide the code you wrote that shows the calculation of the kernel estimator at this single point). Play around with a bandwidth starting with half the default Stata bandwidth. Choose the same bandwidth for all the pictures, and produce a (beautiful, production quality) figure depicting both densities.**
 
 Morgan and Todd (2008) gives us the weights for ATT and ATC (average treatment effect on the controls). These come from weighting observations by $1-p(X_i)$ instead of $p(X_i)$ to weight toward the control group:
@@ -362,12 +370,14 @@ density_fun <- function(x, X, w, h) { # Kernel density estimate with data X and 
 }
 
 # Estimate density if all were smokers
-x_vec = seq(min(df2d$dbrwt), max(df2d$dbrwt), length.out=100)
 df2d = df2c %>%
   mutate(w1 = (tobacco==1) + pscore*(tobacco==2)/(1-pscore)) %>%
   mutate(w1 = w1*nrow(df2c) / sum(w1)) %>%
   mutate(w2 = (1-pscore)*(tobacco==1)/pscore + (tobacco==2)) %>%
   mutate(w2 = w2*nrow(df2c) / sum(w2))
+
+# Create a vector of birthwieght values for plotting the density
+x_vec = seq(min(df2d$dbrwt), max(df2d$dbrwt), length.out=100)
 
 # dens1 = sapply(x_vec, density_fun, X=df2d$dbrwt, w=df2d$w1, h=h_stata)
 ###############################################
@@ -438,6 +448,7 @@ polygon(density(df2d$w1), col=rgb(1,0,0,0.5), border=NA, xlim=c(0,1))  # second 
 
 
 ## Part (g)
+
 **Present your findings and interpret the results on the relationship between birthweight and smoking. For the estimates in parts (b) and (c), consider which of the following conditions must hold in order for that estimate to be valid:**
 
 - The treatment effect heterogeneity is linear in the propensity score.
@@ -483,8 +494,6 @@ df3 %>%
              percent = round((n / sum(n)), 3),
              cumpercent = round(cumsum(freq = n / sum(n)), 3))
 
-
-  
 ```
 
 
