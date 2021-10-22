@@ -501,16 +501,16 @@ df3_merged <- full_join(df3_nosmoke_mean, df3_smoke_mean, by = "pscore_bin") %>%
   filter(is.na(bin_mean_nosmoke) == 0 & is.na(bin_mean_smoke) == 0) %>%
   mutate(dbrwt_diff = bin_mean_smoke - bin_mean_nosmoke, N = N_smoke + N_nosmoke)
 
-N_total <- sum(df3_merged$N)
+N_total_3 <- sum(df3_merged$N)
 
 df3_merged <- df3_merged %>% 
-  mutate(t_k_weighted = dbrwt_diff * (N/N_total))  
+  mutate(t_k_weighted = dbrwt_diff * (N/N_total_3))  
 
-t <- sum(df3_merged$t_k_weighted)
+t_3 <- sum(df3_merged$t_k_weighted)
 
 ```
 
-Using the blocking estimator, we find a smoking treatment effect of `r round(t,3)`
+Using the blocking estimator, we find a smoking treatment effect of `r round(t_3,3)`
 
 
 <!-- 
@@ -520,8 +520,43 @@ Using the blocking estimator, we find a smoking treatment effect of `r round(t,3
 # Problem 4
 **Low birth weight births (less than 2500 grams) are considered particularly undesirable since they comprise a large share of infant deaths. Redo question 3 using an indicator for low birth weight birth as the outcome of interest. Interpret your findings.**
 
+```{r 4}
+#Prepping dataset with indicator variable 
+df4 <- df3 %>% 
+  mutate(low_dbrwt = ifelse(dbrwt < 2500, 1, 0))
 
+#Creating bins separately for smokers and non-smokers
+df4_smoke <- df4 %>%
+  filter(smoke == 1) %>%
+  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
 
+df4_nosmoke <- df4 %>%
+  filter(smoke == 0) %>%
+  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
+
+#Generating t_k (treatment effects for bins)
+df4_smoke_mean <- df4_smoke %>% 
+  group_by(pscore_bin) %>% 
+  summarise(bin_mean_smoke = mean(low_dbrwt), N_smoke = n())
+
+df4_nosmoke_mean <- df4_nosmoke %>% 
+  group_by(pscore_bin) %>% 
+  summarise(bin_mean_nosmoke = mean(low_dbrwt), N_nosmoke = n())
+
+#Generating t (weighted total treatment effect)
+df4_merged <- full_join(df4_nosmoke_mean, df4_smoke_mean, by = "pscore_bin") %>% 
+  filter(is.na(bin_mean_nosmoke) == 0 & is.na(bin_mean_smoke) == 0) %>%
+  mutate(low_dbrwt_diff = bin_mean_smoke - bin_mean_nosmoke, N = N_smoke + N_nosmoke)
+
+N_total_4 <- sum(df4_merged$N)
+
+df4_merged <- df4_merged %>% 
+  mutate(t_k_weighted = low_dbrwt_diff * (N/N_total_4))  
+
+t_4 <- sum(df4_merged$t_k_weighted)
+```
+
+Using the blocking estimator, we find a smoking treatment effect of `r round(t_4,3)`. That is smokers are `r round(t_4,3)*100` percentage points more likely to have a baby with low birth weight than non-smokers. 
 
 <!-- 
 ===============================================================================
