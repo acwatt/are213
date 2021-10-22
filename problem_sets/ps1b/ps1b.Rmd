@@ -470,13 +470,15 @@ polygon(density(df2d$w1), col=rgb(1,0,0,0.5), border=NA, xlim=c(0,1))  # second 
 # Problem 3
 **A potentially more informative way to describe how birth weight affects smoking is to estimate the “non-parametric” conditional mean of birth weight as a function of the estimated probability of smoking, separately for smokers and non-smokers on the same graph. To do so, divide the data from smokers into 100 approximately equally spaced bins based on the estimated propensity score. Do the same for nonsmokers. Use the blocking estimator we discussed in class. Interpret your findings and relate them to the results in (2b).**
 
-```{r}
+```{r 3}
+#Prepping dataset arranged by pscore
 df3 <- df %>% 
   select(dbrwt, tobacco) %>%
-  mutate(pscore = p1, smoke = ifelse(tobacco == 1, 1,0), block) %>%
+  mutate(pscore = p1, smoke = ifelse(tobacco == 1, 1,0)) %>%
   select(-tobacco) %>% 
   arrange(pscore)
 
+#Creating bins separately for smokers and non-smokers
 df3_smoke <- df3 %>%
   filter(smoke == 1) %>%
   mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
@@ -485,18 +487,30 @@ df3_nosmoke <- df3 %>%
   filter(smoke == 0) %>%
   mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
 
-summary(df3$pscore_bin %>% as.numeric())
+#Generating t_k (treatment effects for bins)
+df3_smoke_mean <- df3_smoke %>% 
+  group_by(pscore_bin) %>% 
+  summarise(bin_mean_smoke = mean(dbrwt), N_smoke = n())
 
-df3 %>%
-      group_by(pscore_bin) %>%
-      summarise(n = n()) %>%
-      mutate(totalN = (cumsum(n)),
-             percent = round((n / sum(n)), 3),
-             cumpercent = round(cumsum(freq = n / sum(n)), 3))
+df3_nosmoke_mean <- df3_nosmoke %>% 
+  group_by(pscore_bin) %>% 
+  summarise(bin_mean_nosmoke = mean(dbrwt), N_nosmoke = n())
+
+#Generating t (weighted total treatment effect)
+df3_merged <- full_join(df3_nosmoke_mean, df3_smoke_mean, by = "pscore_bin") %>% 
+  filter(is.na(bin_mean_nosmoke) == 0 & is.na(bin_mean_smoke) == 0) %>%
+  mutate(dbrwt_diff = bin_mean_smoke - bin_mean_nosmoke, N = N_smoke + N_nosmoke)
+
+N_total <- sum(df3_merged$N)
+
+df3_merged <- df3_merged %>% 
+  mutate(t_k_weighted = dbrwt_diff * (N/N_total))  
+
+t <- sum(df3_merged$t_k_weighted)
 
 ```
 
-
+Using the blocking estimator, we find a smoking treatment effect of `r round(t,3)`
 
 
 <!-- 
