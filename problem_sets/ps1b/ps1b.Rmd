@@ -42,7 +42,7 @@ table_type = "text"
 # install.packages("glmnet")
 # install.packages("jtools")
 # install.packages("Hmisc")
-install.packages("rbin")
+# install.packages("rbin")
 library(tidyverse)
 library(foreign)
 # library(xtable)
@@ -308,7 +308,7 @@ ATE2c = sum((df2c$tobacco==1)*df2c$weight*df2c$dbrwt / t_norm) - sum((df2c$tobac
 ```
 The propensity-score-weighted estimated average treatment effect is `r round(ATE2c,2)`.
 
-Imbens (2004) in a review article states that the efficient TOT estimator of $\tau_{treated}$ is derived by weighting each observation by it's propensity score. This makes intuitive sense because we want to weight-up the observations that look like the treated observations and weight-down the observations that look like the untreated. After cancelling out the propensity score in the first term and deviding by the sum of the weights for each treatment group, we get:
+Imbens (2004) in a review article states that the efficient TOT estimator of $\tau_{treated}$ is derived by weighting each observation by it's propensity score. This makes intuitive sense because we want to weight-up the observations that look like the treated observations and weight-down the observations that look like the untreated. After canceling out the propensity score in the first term and dividing by the sum of the weights for each treatment group, we get:
 \[
 \hat\tau_{ATT} = \frac{1}{N_T}\sum\limits_{i:D_i=1}Y_i - 
    \frac{\sum\limits_{i:D_i=0}Y_i\dfrac{\hat p(X_i)}{1-\hat p(X_i)}}
@@ -327,7 +327,7 @@ c_norm = sum((df2c$tobacco==2)*df2c$weight2)  # non-smokers
 # Estimate ATT
 ATT2c = sum((df2c$tobacco==1)*df2c$weight2*df2c$dbrwt / t_norm) - sum((df2c$tobacco==2)*df2c$weight2*df2c$dbrwt / c_norm)
 ```
-The propensity-score-weighted estimated average treatment effect on the treated is `r round(ATT2c,2)`. If we take this result as significantly different from the ATE, then the effect of smoking on birthweight is stronger for those who look like smokers than it is in the general population. Perhaps smoking exacerbates other issues that cause lower birthweight?
+The propensity-score-weighted estimated average treatment effect on the treated is `r round(ATT2c,2)`. If we take this result as significantly different from the ATE, then the effect of smoking on birthweight is stronger for those who look like smokers than it is in the general population. This seems to suggest that there are other, possibly unobserved, characteristics that decrease birthweight that are more common in the population that look like non-smokers than in population that looks like smokers.
 
 ## Part (d)
 
@@ -360,7 +360,7 @@ We can use weighted kernel density estimation with the weights above:
 m = min(var(df2c$dbrwt), IQR(df2c$dbrwt)/1.349)
 h_stata = 0.9*m/nrow(df2c)^(1/5)  # 44.14637 grams
 
-# Define the kernal
+# Define the kernel
 kernel_fun <- function(x, h){ # Epanechnikov Kernel with bandwidth h
   return((3/4)*(1-(x/h)^2)*as.numeric(abs(x/h)<1))
 }
@@ -434,8 +434,8 @@ polygon(density(df2d$w1), col=rgb(1,0,0,0.5), border=NA, xlim=c(0,1))  # second 
 
 ```{r}
 
-```
 
+```
 
 
 ## Part (f)
