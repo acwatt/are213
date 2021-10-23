@@ -620,7 +620,8 @@ df5a = df %>%
 
 # Check to make sure all are dummies
 dummies <- c("rectype", "pldel3", "cntocpop", "stresfip", 
-                "dmage", "mrace3", "dmar", "adequacy", "csex", "dplural")
+             "dmage", "mrace3", "dmar", "adequacy", "csex", "dplural")
+
 for (var in dummies) {
   print(class(df5a[, var]))
 }  
@@ -643,8 +644,9 @@ reg_5a <- lm(dbrwt ~ rectype + pldel3 + cntocpop + stresfip +
                mrace3*dmar + mrace3*adequacy + mrace3*csex + mrace3*dplural +
                dmar*adequacy + dmar*csex + dmar*dplural +
                adequacy*csex + adequacy*dplural +
-               csex*dplural
-               , data = df5a)
+               csex*dplural,
+            data = df5a)
+
 summary(reg_5a)
 
 # The below code is just a helpful reference for using local variable names in for loop
@@ -654,10 +656,46 @@ for (var in make_dummy) {
   df5a <- df5a %>%
     mutate(!!name := ifelse(df5a[,var] == 1, 1 ,0))
 }
-
-
-
 ```
+
+```{r 5a Contending Version}
+# Select variables (Error: cannot allocate vector of size 2616.7 Gb)
+#df5a = df %>% 
+#          select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
+#                 dmage, mrace3, dmar, adequacy, csex, dplural) %>% 
+#          mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
+
+# Saturated Regression
+#reg_5a_2nd_attempt <- lm(dbrwt ~ (.)^10, data = df5a)
+#summary(reg_5a_2nd_attempt)
+
+
+
+# Select variables
+df5a = df %>% 
+          select(dbrwt, tobacco, rectype, pldel3, cntocpop, stresfip, 
+                 dmage, mrace3, dmar, adequacy, csex, dplural) %>% 
+          mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
+
+# Create factor variable (for dummies needed for regression) for unique combination of covariate values
+df5a_unique = df5a %>% 
+                select(-c(dbrwt, tobacco)) %>% 
+                distinct() %>% 
+                arrange(rectype, pldel3, cntocpop, stresfip, 
+                  dmage, mrace3, dmar, adequacy, csex, dplural) %>%
+                mutate(uniq = row_number())
+df5a <- full_join(df5a, df5a_unique, by = c("rectype", "pldel3", "cntocpop", 
+                  "stresfip", "dmage", "mrace3", "dmar", "adequacy", "csex", "dplural"))
+df5a <- df5a %>% mutate(uniq = as.factor(uniq))
+
+# Run regression on dbrwt with saturated model
+reg_5a <- lm(dbrwt ~ uniq, data = df5a)
+summary(reg_5a)
+```
+
+Saturated model for discrete regressors is a sufficient condition for a linear CEF. Hence, I would create a dummy variable for each unique combination of covariate values and run linear regression on these newly created dummy variables to estimate CEF.
+
+
 
 ## Part (b)
 **Now run the regression you propose above, but add the treatment (your binary smoking variable) as the righthand side variable of interest. Prove that if the treatment effect of smoking on birthweight is independent of the covariates in $X$, then exact matching and your regression estimate the same thing. You may assume the conditional independence assumption holds given the variables in $X$ listed above.**
@@ -699,6 +737,46 @@ reg_5b <- lm(dbrwt ~ tobacco + rectype + pldel3 + cntocpop + stresfip +
 summary(reg_5b)
 
 ```
+
+```{r Contending Version 5b}
+# Select variables (Error: cannot allocate vector of size 2616.7 Gb)
+#df5a = df %>% 
+#          select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
+#                 dmage, mrace3, dmar, adequacy, csex, dplural) %>% 
+#          mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
+
+# Saturated Regression
+#reg_5a_2nd_attempt <- lm(dbrwt ~ (.)^10, data = df5a)
+#summary(reg_5a_2nd_attempt)
+
+
+
+# Select variables
+df5a = df %>% 
+          select(dbrwt, tobacco, rectype, pldel3, cntocpop, stresfip, 
+                 dmage, mrace3, dmar, adequacy, csex, dplural) %>% 
+          mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
+
+# Create factor variable (for dummies needed for regression) for unique combination of covariate values
+df5a_unique = df5a %>% 
+                select(-c(dbrwt, tobacco)) %>% 
+                distinct() %>% 
+                arrange(rectype, pldel3, cntocpop, stresfip, 
+                  dmage, mrace3, dmar, adequacy, csex, dplural) %>%
+                mutate(uniq = row_number())
+df5a <- full_join(df5a, df5a_unique, by = c("rectype", "pldel3", "cntocpop", 
+                  "stresfip", "dmage", "mrace3", "dmar", "adequacy", "csex", "dplural"))
+df5a <- df5a %>% mutate(uniq = as.factor(uniq))
+
+# Run regression on dbrwt with saturated model (incl tobacco)
+reg_5a <- lm(dbrwt ~ tobacco + uniq, data = df5a)
+summary(reg_5a)
+```
+
+\[
+\begin{aligned}
+\end{aligned}
+\]
 
 
 ## Part (c)
