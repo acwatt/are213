@@ -157,6 +157,16 @@ stargazer(reg_1b, title="Series Regression", header=FALSE, single.row=TRUE,
 ## Part (c)
 
 **Use the LASSO to determine which covariates (and higher order terms) to include in your regression from part (b). Do you end up dropping some covariates that you had thought might be necessary to include?**
+
+For brevity, I continue on with the exercise with only one dependent variable (dbrwt), skipping the others (fmaps and omaps). Running a simple lasso with all the included varibles from 1(b), and arbitrarily setting number of variables to be included as 20, we chose lambda = 14.23. This is the lowest lambda iteration that results in a model with 20 non-zero coefficients.
+
+Under this setting, predicted impact of smoking on birthweight is -76.9.
+
+We ended up dropping 'dmage' and 'dfage', or age of parents, which we expected to have some correlation with infant's general health and/or weight. On the other hand, variables such as 'csex' and 'preterm', which we expected to have a stronger relationship with infant weight (i.e. male infant might be bigger on average, and previous baby's birth weight might be predictive of the baby of interest), are not dropped as expected.
+
+One problem, however, with what we have done below is that while an interaction term that includes 'dmage' is included, the standalone variable 'dmage' is dropped, which might be undesirable. 
+
+
 ```{r 1C}
 # use glmnet with alpha=1 for lasso
 reg_1c = glmnet(xx, birthweight, family="gaussian", alpha=1)
@@ -172,12 +182,18 @@ print(paste0('# of variables in ', i, 'th iteration: ', sum(reg_1c$beta[, i] != 
 # print(reg_1c$beta[, i])
 
 # Plot what the coefficients are doing as we increase lambda
-plot(reg_1c, label=TRUE)
+op <- par(mfrow=c(1,2))
+plot(reg_1c, "norm", label=TRUE)
+plot(reg_1c, "lambda", label=TRUE)
+par(op)
 ```
-Each curve corresponds to a variable. It shows the path of its coefficient
-  against the L1-norm of the whole coefficient vector as lambda varies. The top axis
-  indicates the number of nonzero coefficients at the current lambda, which is the
-  effective degrees of freedom (df) for the lasso.
+In both graphs, each curve corresponds to a variable. They show the path of its 
+  coefficient against (in the left plot) the L1-norm of the whole coefficient 
+  vector as lambda varies and (in the right plot) the values of log-lamba.
+  The top axis indicates the number of nonzero coefficients at the current lambda, 
+  which is the effective degrees of freedom (df) for the lasso. We see clearly 
+  that as lambda increases more coefficients goes to zero, as intended in 
+  model selection.
 
 Here are the non-zero coefficients:
 ```{r 1C table, results='asis'}
