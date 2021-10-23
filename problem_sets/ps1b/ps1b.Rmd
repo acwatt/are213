@@ -570,10 +570,49 @@ Using the blocking estimator, we find a smoking treatment effect of `r round(t_4
 
 ```{r}
 # Select variables
-df5a = df %>% select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
-                     dmage, mrace3, dmar, adequacy, csex, dplural)
+df5a = df %>% 
+  select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
+                     dmage, mrace3, dmar, adequacy, csex, dplural) %>% 
+  mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
 
-# Run regression
+# Check to make sure all are dummies
+dummies <- c("rectype", "pldel3", "cntocpop", "stresfip", 
+                "dmage", "mrace3", "dmar", "adequacy", "csex", "dplural")
+for (var in dummies) {
+  print(class(df5a[, var]))
+}  
+  
+# Run saturated regression
+reg_5a <- lm(dbrwt ~ rectype + pldel3 + cntocpop + stresfip +
+               dmage + mrace3 + dmar + adequacy + csex + dplural +
+               rectype*pldel3 + rectype*cntocpop + rectype+stresfip + 
+               rectype*dmage + rectype*mrace3 + rectype*dmar + 
+               rectype*adequacy + rectype*csex + rectype*dplural +
+               pldel3*cntocpop + pldel3*stresfip + pldel3*dmage + 
+               pldel3*mrace3 + pldel3*dmar + pldel3*adequacy +
+               pldel3*csex + pldel3*dplural +
+               cntocpop*stresfip + cntocpop*dmage + cntocpop*mrace3 + 
+               cntocpop*dmar + cntocpop*adequacy + cntocpop*csex + cntocpop*dplural +
+               stresfip*dmage +  stresfip*mrace3 +  stresfip*dmar + 
+               stresfip*adequacy +  stresfip*csex +  stresfip*dplural +
+               dmage*mrace3 + dmage*dmar + dmage*adequacy + 
+               dmage*csex + dmage*dplural + 
+               mrace3*dmar + mrace3*adequacy + mrace3*csex + mrace3*dplural +
+               dmar*adequacy + dmar*csex + dmar*dplural +
+               adequacy*csex + adequacy*dplural +
+               csex*dplural
+               , data = df5a)
+summary(reg_5a)
+
+#The below code is just a helpful reference for using local variable names in for loop
+make_dummy <- c("rectype")
+for (var in make_dummy) {
+  name <- paste0(var, "_1")
+  df5a <- df5a %>%
+    mutate(!!name := ifelse(df5a[,var] == 1, 1 ,0))
+}
+
+
 
 ```
 
@@ -582,10 +621,39 @@ df5a = df %>% select(dbrwt, rectype, pldel3, cntocpop, stresfip,
 
 ```{r}
 # Select vars and smoking indicator
-df5b = df %>% select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
-                     dmage, mrace3, dmar, adequacy, csex, dplural)
+df5b = df %>% 
+  select(dbrwt, tobacco, rectype, pldel3, cntocpop, stresfip, 
+                     dmage, mrace3, dmar, adequacy, csex, dplural) %>%
+  mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
+
+# Check to make sure all are dummies
+dummies <- c("tobacco", "rectype", "pldel3", "cntocpop", "stresfip", 
+                "dmage", "mrace3", "dmar", "adequacy", "csex", "dplural")
+for (var in dummies) {
+  print(class(df5b[, var]))
+}
 
 # Run regression
+reg_5b <- lm(dbrwt ~ tobacco + rectype + pldel3 + cntocpop + stresfip +
+               dmage + mrace3 + dmar + adequacy + csex + dplural +
+               rectype*pldel3 + rectype*cntocpop + rectype+stresfip + 
+               rectype*dmage + rectype*mrace3 + rectype*dmar + 
+               rectype*adequacy + rectype*csex + rectype*dplural +
+               pldel3*cntocpop + pldel3*stresfip + pldel3*dmage + 
+               pldel3*mrace3 + pldel3*dmar + pldel3*adequacy +
+               pldel3*csex + pldel3*dplural +
+               cntocpop*stresfip + cntocpop*dmage + cntocpop*mrace3 + 
+               cntocpop*dmar + cntocpop*adequacy + cntocpop*csex + cntocpop*dplural +
+               stresfip*dmage +  stresfip*mrace3 +  stresfip*dmar + 
+               stresfip*adequacy +  stresfip*csex +  stresfip*dplural +
+               dmage*mrace3 + dmage*dmar + dmage*adequacy + 
+               dmage*csex + dmage*dplural + 
+               mrace3*dmar + mrace3*adequacy + mrace3*csex + mrace3*dplural +
+               dmar*adequacy + dmar*csex + dmar*dplural +
+               adequacy*csex + adequacy*dplural +
+               csex*dplural
+               , data = df5b)
+summary(reg_5b)
 
 ```
 
