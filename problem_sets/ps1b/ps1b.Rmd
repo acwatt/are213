@@ -514,6 +514,11 @@ df3 <- df %>%
   select(-tobacco) %>% 
   arrange(pscore)
 
+# Check Overlap Assumption
+minmax <- df3 %>% 
+            group_by(smoke) %>%
+            summarise(max = max(pscore), min = min(pscore))
+
 #Creating bins separately for smokers and non-smokers
 df3_smoke <- df3 %>%
   filter(smoke == 1) %>%
@@ -546,6 +551,8 @@ t_3 <- sum(df3_merged$t_k_weighted)
 
 ```
 
+First, for each group of smokers and nonsmokers, we see that the range of estimated propesntiy score is (`r round(as.numeric(minmax[1,3]), 3)`, `r round(as.numeric(minmax[1,2]), 4)`) for nonsmokers and (`r round(as.numeric(minmax[2,3]), 4)`, `r round(as.numeric(minmax[2,2]), 4)`) for smokers. The range is very similar and so overlap assumption is satisfied and trimming for blocking is not needed.
+
 Using the blocking estimator, we find a smoking treatment effect of `r round(t_3,3)`
 
 
@@ -557,11 +564,11 @@ Using the blocking estimator, we find a smoking treatment effect of `r round(t_3
 **Low birth weight births (less than 2500 grams) are considered particularly undesirable since they comprise a large share of infant deaths. Redo question 3 using an indicator for low birth weight birth as the outcome of interest. Interpret your findings.**
 
 ```{r 4}
-#Prepping dataset with indicator variable 
+# Prepping dataset with indicator variable 
 df4 <- df3 %>% 
   mutate(low_dbrwt = ifelse(dbrwt < 2500, 1, 0))
 
-#Creating bins separately for smokers and non-smokers
+# Creating bins separately for smokers and non-smokers
 df4_smoke <- df4 %>%
   filter(smoke == 1) %>%
   mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
@@ -570,7 +577,7 @@ df4_nosmoke <- df4 %>%
   filter(smoke == 0) %>%
   mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
 
-#Generating t_k (treatment effects for bins)
+# Generating t_k (treatment effects for bins)
 df4_smoke_mean <- df4_smoke %>% 
   group_by(pscore_bin) %>% 
   summarise(bin_mean_smoke = mean(low_dbrwt), N_smoke = n())
@@ -579,7 +586,7 @@ df4_nosmoke_mean <- df4_nosmoke %>%
   group_by(pscore_bin) %>% 
   summarise(bin_mean_nosmoke = mean(low_dbrwt), N_nosmoke = n())
 
-#Generating t (weighted total treatment effect)
+# Generating t (weighted total treatment effect)
 df4_merged <- full_join(df4_nosmoke_mean, df4_smoke_mean, by = "pscore_bin") %>% 
   filter(is.na(bin_mean_nosmoke) == 0 & is.na(bin_mean_smoke) == 0) %>%
   mutate(low_dbrwt_diff = bin_mean_smoke - bin_mean_nosmoke, N = N_smoke + N_nosmoke)
@@ -640,7 +647,7 @@ reg_5a <- lm(dbrwt ~ rectype + pldel3 + cntocpop + stresfip +
                , data = df5a)
 summary(reg_5a)
 
-#The below code is just a helpful reference for using local variable names in for loop
+# The below code is just a helpful reference for using local variable names in for loop
 make_dummy <- c("rectype")
 for (var in make_dummy) {
   name <- paste0(var, "_1")
