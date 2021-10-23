@@ -42,7 +42,6 @@ table_type = "text"
 # install.packages("glmnet")
 # install.packages("jtools")
 # install.packages("Hmisc")
-install.packages("rbin")
 library(tidyverse)
 library(foreign)
 # library(xtable)
@@ -278,9 +277,12 @@ reg_2b = lm(dbrwt ~ ., data=df2b)
 summary(reg_2b)
 # Estimate ATE
 ATE_2b = reg_2b$coefficients["tobacco1"]
+
+reg_2bb = lm(dbrwt ~ tobacco + pscore, data=df2b)
+reg_2bb$coefficients["tobacco1"]
 ```
 
-The estimated ATE of tobacco use during pregnancy is `r round(ATE_2b,3)` -- smoking during pregnancy causes a `r abs(round(ATE_2b,3))` drop in grams of the birthweight of the child. This is correct if we have unconfoundedness and we assume a constant treatment effect. 
+The estimated ATE of tobacco use during pregnancy when including covariates and the pscore is `r round(ATE_2b,3)` -- smoking during pregnancy causes a `r abs(round(ATE_2b,3))` drop in grams of the birthweight of the child. When only including the pscore, the ATE is `r round(ATE_2bb,3)`. This is correct if we have unconfoundedness and we assume a constant treatment effect. 
 
 
 ## Part (c)
@@ -300,11 +302,15 @@ Imbens tells us that, after dividing by the sum of the weights in each treatment
 df2c = df2b %>% 
   mutate(pscore = predict(reg_2a1, ., type = "response")) %>%
   mutate(weight = ifelse(tobacco == 1, 1/pscore, 1/(1-pscore)))
-t_norm = sum((df2c$tobacco==1)*df2c$weight)  # smokers
-c_norm = sum((df2c$tobacco==2)*df2c$weight)  # non-smokers
+t_norm1 = sum((df2c$tobacco==1)*df2c$weight)  # smokers
+c_norm1 = sum((df2c$tobacco==2)*df2c$weight)  # non-smokers
+df2c = df2c %>% mutate(weight3 = ifelse(tobacco == 1, 1/pscore/t_norm1, 1/(1-pscore)/c_norm1))
 
 # Estimate ATE
-ATE2c = sum((df2c$tobacco==1)*df2c$weight*df2c$dbrwt / t_norm) - sum((df2c$tobacco==2)*df2c$weight*df2c$dbrwt / c_norm)
+weight_mean_smoker_all = sum((df2c$tobacco==1) * df2c$weight * df2c$dbrwt) / t_norm1
+weight_mean_nonsmoker_all = sum((df2c$tobacco==2) * df2c$weight * df2c$dbrwt) / c_norm1
+ATE2c = weight_mean_smoker_all - weight_mean_nonsmoker_all
+ATE2c
 ```
 The propensity-score-weighted estimated average treatment effect is `r round(ATE2c,2)`.
 
@@ -321,11 +327,14 @@ Imbens (2004) in a review article states that the efficient TOT estimator of $\t
 # Reweight data for ATT
 df2c = df2c %>% 
   mutate(weight2 = ifelse(tobacco == 1, 1, pscore/(1-pscore)))
-t_norm = sum((df2c$tobacco==1)*df2c$weight2)  # smokers
-c_norm = sum((df2c$tobacco==2)*df2c$weight2)  # non-smokers
+t_norm2 = sum((df2c$tobacco==1)*df2c$weight2)  # smokers
+c_norm2 = sum((df2c$tobacco==2)*df2c$weight2)  # non-smokers
 
 # Estimate ATT
-ATT2c = sum((df2c$tobacco==1)*df2c$weight2*df2c$dbrwt / t_norm) - sum((df2c$tobacco==2)*df2c$weight2*df2c$dbrwt / c_norm)
+weight_mean_smoker_treat = sum((df2c$tobacco==1) * df2c$weight2 * df2c$dbrwt) / t_norm2
+weight_mean_nonsmoker_treat = sum((df2c$tobacco==2) * df2c$weight2 * df2c$dbrwt) / c_norm2
+ATT2c = weight_mean_smoker_treat - weight_mean_nonsmoker_treat
+ATT2c
 ```
 The propensity-score-weighted estimated average treatment effect on the treated is `r round(ATT2c,2)`. If we take this result as significantly different from the ATE, then the effect of smoking on birthweight is stronger for those who look like smokers than it is in the general population. Perhaps smoking exacerbates other issues that cause lower birthweight?
 
@@ -360,51 +369,68 @@ We can use weighted kernel density estimation with the weights above:
 m = min(var(df2c$dbrwt), IQR(df2c$dbrwt)/1.349)
 h_stata = 0.9*m/nrow(df2c)^(1/5)  # 44.14637 grams
 
-# Define the kernal
-kernel_fun <- function(x, h){ # Epanechnikov Kernel with bandwidth h
-  return((3/4)*(1-(x/h)^2)*as.numeric(abs(x/h)<1))
-}
-
-density_fun <- function(x, X, w, h) { # Kernel density estimate with data X and weights w
-  return(sum(w/(length(X)*h)*sapply(x-X, kernel_fun, h=h)))
-}
-
-# Estimate density if all were smokers
-df2d = df2c %>%
-  mutate(w1 = (tobacco==1) + pscore*(tobacco==2)/(1-pscore)) %>%
-  mutate(w1 = w1*nrow(df2c) / sum(w1)) %>%
-  mutate(w2 = (1-pscore)*(tobacco==1)/pscore + (tobacco==2)) %>%
-  mutate(w2 = w2*nrow(df2c) / sum(w2))
+df2d = df2c
 
 # Create a vector of birthwieght values for plotting the density
 x_vec = seq(min(df2d$dbrwt), max(df2d$dbrwt), length.out=100)
 
-# dens1 = sapply(x_vec, density_fun, X=df2d$dbrwt, w=df2d$w1, h=h_stata)
-###############################################
-###############################################
-# cannot figure out why the sapply function is not working
-# with density_fun and arguments
+# Define the kernal
+kernel_fun <- function(x, h){ # Epanechnikov Kernel with bandwidth h
+  weight = (3/4)*(1-(x/h)^2)*as.numeric(abs(x/h)<1)
+  return(weight)
+}
 
-myfun <- function(x,X,w,h){return(x+X+w+h)}
-sapply(x_vec, density_fun)
-sapply(x_vec, myfun, X=df2d$dbrwt, w=df2d$w1, h=h_stata)
+density_fun <- function(x, df) { # Kernel density estimate with data X and weights w
+  kernel_vec = sapply(x - df$dbrwt, kernel_fun, h=h_stata)
+  # print(summary(kernel_vec))
+  f = sum(df$weight * kernel_vec) / (nrow(df)*h_stata)
+  # print(sum(df$weight * kernel_vec))
+  # print(f)
+  return(f)
+}
+density_fun(2000, filter(df2d, tobacco==1))
+density_fun(2000, filter(df2d, tobacco==2))
 
-h=80
-dens1 = density(df2d$dbrwt,
-                bw=h,  # stata default
+# Estimate density if all were smokers
+# df2d = df2c %>%
+#   mutate(w1 = (tobacco==1) + pscore*(tobacco==2)/(1-pscore)) %>%
+#   mutate(w1 = w1*nrow(df2c) / sum(w1)) %>%
+#   mutate(w2 = (1-pscore)*(tobacco==1)/pscore + (tobacco==2)) %>%
+#   mutate(w2 = w2*nrow(df2c) / sum(w2))
+
+start_t = proc.time()
+dens1_custom = sapply(x_vec, density_fun, df=filter(df2d, tobacco==1))
+dens2_custom = sapply(x_vec, density_fun, df=filter(df2d, tobacco==2))
+print(paste("time to complete:", round((proc.time()[3]-start_t[3])/60, 2), "minutes"))
+
+dens_df = rbind(data.frame(birthweight=x_vec, f=dens1_custom, smoker="yes"),
+                data.frame(birthweight=x_vec, f=dens2_custom, smoker="no"))
+p <- ggplot(dens_df, aes(x = birthweight, y = f)) +
+  geom_polygon(aes(fill=smoker, group = smoker), alpha = 0.5)
+p
+```
+
+```{r}
+
+h=40  # play with h to get the prettiness we want (h_state defined above)
+dens1 = density(filter(df2d, tobacco==1)$dbrwt,
+                bw=h,
                 kernel="epanechnikov",
-                weights=df2d$w1)
-dens2 = density(df2d$dbrwt,
-                bw=h,  # stata default
+                weights=filter(df2d, tobacco==1)$w1)
+dens2 = density(filter(df2d, tobacco==2)$dbrwt,
+                bw=h,
                 kernel="epanechnikov",
-                weights=df2d$w2)
+                weights=filter(df2d, tobacco==2)$w2)
 dens = rbind(data.frame(birthweight=dens1$x, f=dens1$y, smoker="yes"),
           data.frame(birthweight=dens2$x, f=dens2$y, smoker="no"))
 
+means = data.frame(avg = c(weight_mean_smoker_all, weight_mean_nonsmoker_all),
+                   name = c("weighted mean smoker-babies weight", "weighted mean nonsmoker-babies weight"))
 p <- ggplot(dens, aes(x = birthweight, y = f)) +
-  geom_polygon(aes(fill=smoker, group = smoker), alpha = 0.5)
+  geom_polygon(aes(fill=smoker, group = smoker), alpha = 0.5) +
+  geom_vline(data=means, mapping=aes(xintercept=avg), color="blue") +
+  geom_text(data=means, mapping=aes(x=avg, y=0, label=name), size=4, angle=90, vjust=c(-0.4, 1), hjust=0)
 p
-
 
 
 ggplot(df2d, aes(x=dbrwt, y=w1)) + geom_point(df2d, aes(x=dbrwt, y=w2))
@@ -413,20 +439,57 @@ ggplot(data = df2d, aes(dbrwt, w1)) +
      geom_point(aes(x = dbrwt, y = w2), legend = TRUE, colour=alpha('blue', 0.05) )
 
 
-# Graph both kernel densities over range of birthweight in the same plot
-plot(dens1, col=rgb(0, 0, 1, 0.5), lwd=3,
-     main='Comparing counterfactual birthweight densities')  # first kernel
-plot(dens2, col=rgb(0, 0, 1, 0.5), lwd=3, add=T)  # second kernel
-ggplot(df2d, aes(x=value, fill=variable)) + geom_density(alpha=0.25)
-
-plot(density(df2d$w2), col=rgb(0,0,1), xlim=c(0,1), lwd=3,
-     main='Comparing p-score densities with and without significant variables')  # first kernel
-polygon(density(df2d$w1), col=rgb(1,0,0,0.5), border=NA, xlim=c(0,1))  # second kernel filled in
-
-
 # calculate the kernel estimator at birthweight equals 3,000 grams
 
 ```
+
+```{r}
+h1 = 0.6
+
+set.seed(92021)
+N <- 1000
+X_i <- rnorm(N) # One continuous covariate drawn from ~N(0,1)
+# Find min and max of X
+minX <- min(X_i)
+maxX <- max(X_i)
+
+epi_k <- function(u,h){ # Epanechnikov Kernel with bandwidth h
+  out <- (3/4)*(1-(u/h)^2)*as.numeric(abs(u/h)<1)
+  return(out)
+}
+
+k_dens <- function(x){ # Kernel density estimate with data X_emp
+  f_hat <- 1/(length(X_i)*h)*sum(sapply(x-X_i, epi_k, h=h1))
+  return(f_hat)
+}
+
+k_reg <- function(x,X_emp,y_emp,h){ # Kernel regression
+  f_hat <- 1/(length(X_emp)*h)*sum(sapply(x-X_emp, epi_k, h=h)*y_emp)/k_dens(x,X_emp,h)
+  return(f_hat)
+}
+
+Dfn_exp <- function(x){
+  return(exp(x)/exp(maxX))
+}
+D_exp <- sapply(X_i, function(x) rbernoulli(1,Dfn_exp(x)))
+
+# Draw untreated POs from ~N(X,1), Y(1)=Y(0)+0.3
+Y_i0 <- sapply(X_i,function(x) rnorm(1,x,1))
+Y_i1 <- Y_i0+.3
+  #sapply(Y_i0,function(x) rnorm(1,10+x))
+
+print(paste("ATE:",mean(Y_i1-Y_i0)))
+
+x = seq(min(X_i), max(X_i), length.out=4)
+denss = sapply(x, k_dens)
+out <- ggplot(data=data.frame(X=X_i, D=D_exp, f=denss))+
+    geom_line(aes(x=X, y=f))
+out
+
+
+```
+
+
 
 
 ## Part (e)
