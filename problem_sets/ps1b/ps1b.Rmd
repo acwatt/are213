@@ -104,28 +104,46 @@ In order to assume linearity, we need (1) joint normality with observables, indi
 **Now, consider a series estimator. Estimate the smoking effects using a flexible functional form for the control variables (e.g., higher order terms and interactions). What are the benefits and drawbacks to this approach?**
 
 ```{r 1B}
-df1b = df %>% select(dbrwt, tobacco, csex, mrace3, preterm,
-                     dmage, dfage, dmeduc, dfeduc, ormoth, orfath,
-                     disllb, dtotord, dmar, adequacy, nprevist)
+df1b = df %>% select(dbrwt, fmaps, omaps, tobacco, 
+                     csex, mrace3, preterm, dmage, dfage, dmeduc, dfeduc, 
+                     ormoth, orfath, disllb, dtotord, dmar, adequacy, nprevist)
 
 # indicator vars (no higher order terms)
-vars1 = names(Filter(is.factor, select(df1b, -dbrwt)))
+vars1 = names(Filter(is.factor, select(df1b, -c(dbrwt, fmaps, omaps))))
 # quantitative vars (need to create higher order terms)
-vars2 = names(Filter(is.integer, select(df1b, -dbrwt)))
+vars2 = names(Filter(is.integer, select(df1b, -c(dbrwt, fmaps, omaps))))
 
 birthweight = df1b$dbrwt
-x = df1b %>% select(-dbrwt)
+fiveminapgar = df1b$fmaps
+oneminapgar = df1b$omaps
+
+x = df1b %>% select(-c(dbrwt, fmaps, omaps))
 # Create dummies from factor variables, all interactions, and squared continuous vars
 formula1 = as.formula(paste("~ .^2 +", paste0("I(",vars2,"^2)", collapse=' + ') ))
 xx <- model.matrix(formula1, x)[, -1]
 
 # Series Regression
-reg_1b = lm(birthweight ~ xx)
+reg_1b_dbrwt = lm(birthweight ~ xx)
+reg_1b_fmaps = lm(fiveminapgar ~ xx)
+reg_1b_omaps = lm(oneminapgar ~ xx)
+
 # rename the coefficients
-names(reg_1b$coefficients) <- gsub("xx","",names(reg_1b$coefficients))
+names(reg_1b_dbrwt$coefficients) <- gsub("xx","",names(reg_1b_dbrwt$coefficients))
+names(reg_1b_fmaps$coefficients) <- gsub("xx","",names(reg_1b_fmaps$coefficients))
+names(reg_1b_omaps$coefficients) <- gsub("xx","",names(reg_1b_omaps$coefficients))
 ```
 
-**Need to change to longtable before final submission**
+```{r 1B table abbreviated, results='asis'}
+stargazer(reg_1b_dbrwt, reg_1b_fmaps, reg_1b_omaps, 
+          omit=":",
+          title = "Series Regression", 
+          align = TRUE, no.space = TRUE, font.size = "small",
+          notes = "For brevity, only the original variables are presented;
+                   300+ second order / interaction terms are not shown.")
+```
+
+
+## REVIEW THIS BEFORE SUBMISSION: Need to change to longtable before final submission**
 
 ```
 A table enviroment cannot be broken across pages. Delete \begin{table}\centering and \end{table}, replace tabular with longtable, move \caption and label to immediately after \begin{longtable}{..}. And add \usepackage{longtable} to the preamble, of course.
