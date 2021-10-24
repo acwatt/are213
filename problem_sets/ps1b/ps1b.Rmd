@@ -468,7 +468,7 @@ density_fun(3000, filter(df2d, tobacco==2), 2*h2) / norm_cons1
 **Take one of your densities and display an estimate of the density using different bandwidths as well as the one you settled on. What happens with bigger (smaller) bandwidths?**
 
 Smokers' density with bandwidth = 1/2 * Stata bandwidht
-```{r Problem 2e 0.5, echo=False}
+```{r Problem 2e 0.5_1, echo=False}
 dens1_custom = sapply(x_vec, density_fun, df=filter(df2d, tobacco==1), h=0.5*h1)
 norm_cons1 = sum(diff(x_vec) * zoo::rollmean(dens1_custom, 2))
 dens_df = data.frame(birthweight=x_vec, f=(dens1_custom / norm_cons1), smoker="yes")
@@ -477,7 +477,7 @@ ggplot(dens_df, aes(x = birthweight, y = f)) +
 ```
 
 Smokers' density with bandwidth = 1 Stata bandwidht
-```{r Problem 2e 0.5, echo=False}
+```{r Problem 2e 0.5_2, echo=False}
 dens1_custom = sapply(x_vec, density_fun, df=filter(df2d, tobacco==1), h=h1)
 norm_cons1 = sum(diff(x_vec) * zoo::rollmean(dens1_custom, 2))
 dens_df = data.frame(birthweight=x_vec, f=(dens1_custom / norm_cons1), smoker="yes")
@@ -486,7 +486,7 @@ ggplot(dens_df, aes(x = birthweight, y = f)) +
 ```
 
 Smokers' density with bandwidth = 2 Stata bandwidht
-```{r Problem 2e 0.5, echo=False}
+```{r Problem 2e 0.5_3, echo=False}
 dens1_custom = sapply(x_vec, density_fun, df=filter(df2d, tobacco==1), h=2*h1)
 norm_cons1 = sum(diff(x_vec) * zoo::rollmean(dens1_custom, 2))
 dens_df = data.frame(birthweight=x_vec, f=(dens1_custom / norm_cons1), smoker="yes")
@@ -545,11 +545,12 @@ minmax <- df3 %>%
 #Creating bins separately for smokers and non-smokers
 df3_smoke <- df3 %>%
   filter(smoke == 1) %>%
-  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
+  mutate(pscore_bin = ceiling(pscore * 100))
+
 
 df3_nosmoke <- df3 %>%
   filter(smoke == 0) %>%
-  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
+  mutate(pscore_bin = ceiling(pscore * 100))
 
 #Generating t_k (treatment effects for bins)
 df3_smoke_mean <- df3_smoke %>% 
@@ -594,11 +595,11 @@ df4 <- df3 %>%
 # Creating bins separately for smokers and non-smokers
 df4_smoke <- df4 %>%
   filter(smoke == 1) %>%
-  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
+  mutate(pscore_bin = ceiling(pscore * 100))
 
 df4_nosmoke <- df4 %>%
   filter(smoke == 0) %>%
-  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
+  mutate(pscore_bin = ceiling(pscore * 100))
 
 # Generating t_k (treatment effects for bins)
 df4_smoke_mean <- df4_smoke %>% 
