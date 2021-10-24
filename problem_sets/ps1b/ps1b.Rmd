@@ -773,14 +773,38 @@ reg_5a <- lm(dbrwt ~ tobacco + uniq, data = df5a)
 summary(reg_5a)
 ```
 
+Let Y = dbrwt, D = tobacco, and X = covariates listed for quesiton 5a. Assume $Y_i = \alpha + \beta D_i + \delta h(x_i) + v_i$ and thereby $Y_i = \alpha + \beta \tilde{D_i} + \delta h(x_i) + u_i$, where $\tilde{D_i} = D_i - \mathbb{E}[D_i|X_i] $ and $u_i = \epsilon_i + \beta \mathbb{E}[D_i|X_i]$. We showed, in class, that $\mathbb{E}[u_i \tilde{D_i}] = 0$ under un-confounded-ness and homogeneous treatment, and can get consistent estimate of $\beta$ if CEF is known. While our CEF is not known, given we have linear CEF with a saturated model, we can simply include X's as additional control.
+
+Let matrix $Z = [D \; E[D|X_i]]$.
+
 \[
 \begin{aligned}
+\tau_{(OLS \; 5b)} &= \frac{\mathbb{E}[Z_i Y_i]}{Var[Z_i]} &  \\
+                   &= \frac{\mathbb{E}[\tilde{D_i}Y_i]}{Var[\tilde{D_i}]} & \text{given consistent estimate} \\
+                   &= \frac{\mathbb{E}[\mathbb{E}[\tilde{D}Y_i|D_i, X_i]]}{Var[\tilde{D_i}]} \\
+                   &= \frac{\mathbb{E}[\tilde{D}\mathbb{E}[Y_i|D_i, X_i]]}{Var[\tilde{D_i}]} \\
+                   &= \frac{\mathbb{E}[\tilde{D}(\mathbb{E}[Y_i|D_i=0, X_i] + \mathbb{E}[\tau_i|D_i, X_i]D_i)]}{Var[\tilde{D_i}]} \\
+                   &= \frac{\mathbb{E}[\tilde{D}(\mathbb{E}[Y_i|D_i=0, X_i] + \mathbb{E}[\tau_i|X_i]D_i)]}{Var[\tilde{D_i}]} & \text{CIA} \\
+                   &= \frac{\mathbb{E}[\tilde{D}\mathbb{E}[Y_i|D_i=0, X_i] + \tilde{D}D_i\mathbb{E}[\tau_i]]}{Var[\tilde{D_i}]} & \text{Trt independent of X} \\
+                   &= \frac{\mathbb{E}[D_i\mathbb{E}[Y_i|D_i=0, X_i] -  \mathbb{E}[D_i|X_i]\mathbb{E}[Y_i|D_i=0, X_i] + \tilde{D}D_i\mathbb{E}[\tau_i]]}{Var[\tilde{D_i}]} \\
+                   &= \frac{\mathbb{E}[D_i\mathbb{E}[Y_i|D_i=0, X_i]] -  \mathbb{E}[\mathbb{E}[D_i|X_i]\mathbb{E}[Y_i|D_i=0, X_i]] + \mathbb{E}[\tilde{D}D_i\mathbb{E}[\tau_i]]}{Var[\tilde{D_i}]} \\
+                   &= \frac{\mathbb{E}[D_i]\mathbb{E}[Y_i|D_i=0, X_i] -  \mathbb{E}[D_i]\mathbb{E}[Y_i|D_i=0, X_i] + \mathbb{E}[\tilde{D}D_i]\mathbb{E}[\tau_i]}{Var[\tilde{D_i}]} \\
+                   &= \frac{\mathbb{E}[\tilde{D}D_i]\mathbb{E}[\tau_i]}{Var[\tilde{D_i}]} \\
+                   &= \frac{[\mathbb{E}[D_i^2] - \mathbb{E}[D_i]^2]\mathbb{E}[\tau_i]}{Var[\tilde{D_i}]} \\
+                   &= \frac{Var[D_i]\mathbb{E}[\tau_i]}{Var[D_i]} \\
+                   &= \mathbb{E}[\tau_i]
 \end{aligned}
 \]
+
+Hence, we know our regression from 5b estimates Average Treatment Effect.
+
+Furthermore, we have assumed CIA holds, that conditioning on X's, materal tobacco is as good as randomly assigned. Hence, matching exactly on X's and comparing outcomes within the match across treatment and control groups should also derive Average Treatment Effect. Hence, our regression from 5b would estimate the same thing as exact matching.
 
 
 ## Part (c)
 **Develop a weighted version of the exact matching estimator that estimates the same thing as the regression above (regardless of whether the treatment effect is independent of covariates).**
+
+
 
 
 ## Part (d)
