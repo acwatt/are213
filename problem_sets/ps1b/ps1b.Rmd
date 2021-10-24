@@ -144,12 +144,6 @@ stargazer(reg_1b_dbrwt, reg_1b_fmaps, reg_1b_omaps,
 ```
 
 
-## REVIEW THIS BEFORE SUBMISSION: Need to change to longtable before final submission**
-
-```
-A table enviroment cannot be broken across pages. Delete \begin{table}\centering and \end{table}, replace tabular with longtable, move \caption and label to immediately after \begin{longtable}{..}. And add \usepackage{longtable} to the preamble.
-```
-
 
 ## Part (c)
 
