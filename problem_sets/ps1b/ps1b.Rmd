@@ -54,7 +54,7 @@ library(stargazer)
 library(finalfit)
 library(glmnet)
 library(jtools)  # summ() for regression summaries
-library(Hmisc)  # for 
+library(Hmisc)
 ```
 
 # Data cleaning from PS 1a
@@ -83,7 +83,9 @@ variable_labels <- setNames(as.character(variable_labels_df$label), variable_lab
 data <- Hmisc::upData(data, labels = variable_labels)
 
 # Dataframe with missing dropped
-df = data[complete.cases(data), ]
+
+df = data[complete.cases(data), ] %>%
+  sample_n(10000)
 # Treatment reference level
 df$tobacco <- relevel(df$tobacco, ref = "2")  # reference level: 2 = no for tobacco use during pregnancy
 ```
@@ -665,7 +667,7 @@ Saturated model for discrete regressors is a sufficient condition for a linear C
 **Now run the regression you propose above, but add the treatment (your binary smoking variable) as the righthand side variable of interest. Prove that if the treatment effect of smoking on birthweight is independent of the covariates in $X$, then exact matching and your regression estimate the same thing. You may assume the conditional independence assumption holds given the variables in $X$ listed above.**
 
 
-```{r Problem 5b, eval=F}
+```{r Problem 5b, eval=T}
 # Select variables
 df5a = df %>% 
           select(dbrwt, tobacco, rectype, pldel3, cntocpop, stresfip, 
@@ -698,7 +700,7 @@ results_df = rbind(results_df,
                               number_vars = length(levels(df5a$uniq)) + 2))
 ```
 
-```{r Problem 5b table, results='asis', eval=F}
+```{r Problem 5b table, results='asis', eval=T}
 stargazer(reg_5a,
           type = 'latex',
           keep = "tobacco1",
@@ -758,7 +760,7 @@ Given discrete covariates establishing cells for exact matching, we can set $w_i
 ## Part (d)
 **Estimate the weighted matching estimator you propose. Compare it to the regression estimate from part (b). Are they similar?**
 
-```{r Problem 5d, eval=F}
+```{r Problem 5d, eval=T}
 # Make two df5a--one of treated and one of untreated. 
 df5c <- df5a %>%
   select(dbrwt, tobacco, uniq)
@@ -799,6 +801,13 @@ df5c2 <- df5c2 %>%
   mutate(diff_wt = dbrwt_t - dbrwt_c)
 
 summary(df5c2$diff_wt)
+ATE5d = mean(df5c2$diff_wt)
+
+results_df = rbind(results_df, 
+                   data.frame(type = 'Weighted exact matching',
+                              ate = ATE5d,
+                              att = NA,
+                              number_vars = NA))
 ```
 
 
@@ -815,15 +824,6 @@ The regression has more observations because it includes all the observation in 
     \[\sum_i\left(\frac{d_i}{N_t^2} + \frac{1-d_i}{N_c^2}w_i^2\hat\sigma_{d_i}^2(x_i) \right),\]
     where $\hat\sigma_{d_i}^2(x_i)=\frac{1}{2}(y_i - y_{nn(i)})$, and $y_{nn(i)}$ is the nearest neighbor to observation $i$ with the \textit{same} treatment status. Figure out the implicit weights $w_i$ in your estimator from part (d), and compute the conditional variance. Is it close to your regression coefficient variance?**
     
-```{r Problem 5f}
-# Compute a standard error for your matching estimator using the formula from Imbens (2015).
-
-
-# compute the conditional variance of estimator from (d)
-
-
-```
-
 
 
 
@@ -834,31 +834,17 @@ The regression has more observations because it includes all the observation in 
 # Problem 6
 **Concisely and coherently summarize your overall results, providing some intuition. Write it like you would the conclusion of a paper. In this summary, describe whether you think your best estimate of the effects of smoking is credibly identified. State why or why not.**
 
-In conclusion, the treatment effect of mother's smoking habits on baby birthweight appears to be robust across a number of identification strategies. Each method--be it matching by propensity score or on covariates, or using a egression or direct matching estimator--produces extremely similar results. While surprising on the surface, the reason for this is simple--they all use essentially the same mechanics under the hood. 
+In conclusion, the treatment effect of mother's smoking habits on baby birthweight appears to be robust across a number of identification strategies. Each method--be it matching by propensity score or on covariates, or using a regression or direct matching estimator--produces extremely similar results. While surprising on the surface, the reason for this is simple--they all use essentially the same mechanics under the hood. 
 
 Each of these methods compares treated and untreated observations based on similar characteristics. In the case of propensity score matching, observations are weighted by their likelihood of being treated, giving more weight to untreated observations that by all other measures look like treated observations. In the case of exact matching, treated observations are paired with untreated observations based on relevant characteristics and their differences are computed. For these reasons, we believe the true effect of smoking on baby birthweight to be around -220.
 
-```{r echo=F, eval=F}
-# qwraps2
 
-our_summary1 <-
-  list("Miles Per Gallon" =
-       list("Series Regression"       = ~ reg_1b_dbrwt$coefficients['tobacco1'],
-            "Regression with pscore"       = ~ reg_2bb$coefficients["tobacco1"],
-       "Displacement" =
-       list("min"       = ~ min(disp),
-            "median"    = ~ median(disp),
-            "max"       = ~ max(disp),
-            "mean (sd)" = ~ qwraps2::mean_sd(disp)),
-       "Weight (1000 lbs)" =
-       list("min"       = ~ min(wt),
-            "max"       = ~ max(wt),
-            "mean (sd)" = ~ qwraps2::mean_sd(wt)),
-       "Forward Gears" =
-       list("Three" = ~ qwraps2::n_perc0(gear == 3),
-            "Four"  = ~ qwraps2::n_perc0(gear == 4),
-            "Five"  = ~ qwraps2::n_perc0(gear == 5))
-       )
+```{r Problem 6 table, results='asis'}
+knitr::kable(results_df, 
+             caption="Treatment Effect Estimates by Method",
+             col.names = c('Method Type', 'ATE (grams)', 'ATT (grams)', 'Number of variables'),
+             align = "l", digits = 3,
+             format = "latex")
 ```
 
 
