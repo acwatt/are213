@@ -54,7 +54,7 @@ library(stargazer)
 library(finalfit)
 library(glmnet)
 library(jtools)  # summ() for regression summaries
-library(Hmisc)
+library(Hmisc)  # for 
 ```
 
 # Data cleaning from PS 1a
@@ -135,28 +135,22 @@ reg_1b_omaps = lm(oneminapgar ~ xx)
 names(reg_1b_dbrwt$coefficients) <- gsub("xx","",names(reg_1b_dbrwt$coefficients))
 names(reg_1b_fmaps$coefficients) <- gsub("xx","",names(reg_1b_fmaps$coefficients))
 names(reg_1b_omaps$coefficients) <- gsub("xx","",names(reg_1b_omaps$coefficients))
+results_df = data.frame(type = 'Series Regression',
+                        ate = reg_1b_dbrwt$coefficients['tobacco1'],
+                        att = NA,
+                        number_vars = ncol(xx)+1)
 ```
 
-
-          keep = "tobacco1(?!:)",
-          perl=TRUE,
           
 ```{r 1B table abbreviated, results='asis', eval=T}
 stargazer(reg_1b_dbrwt, reg_1b_fmaps, reg_1b_omaps,
           type = 'latex',
           keep = "tobacco1(?!:)",
-          perl=TRUE,
+          perl=TRUE, header = FALSE, table.placement = '!h',
           title = "Series Regressions", 
           align = TRUE, no.space = TRUE, font.size = "small",
           notes = c("For brevity, only the original variables are presented;",
                     "300+ second order / interaction terms are not shown."))
-```
-
-
-## REVIEW THIS BEFORE SUBMISSION: Need to change to longtable before final submission**
-
-```
-A table enviroment cannot be broken across pages. Delete \begin{table}\centering and \end{table}, replace tabular with longtable, move \caption and label to immediately after \begin{longtable}{..}. And add \usepackage{longtable} to the preamble.
 ```
 
 
@@ -183,9 +177,6 @@ num_vars = 20
 # choose lowest lambda iteration that results in num_vars non-zero variables
 i = max(which(abs(reg_1c$df - num_vars) == min(abs(reg_1c$df - num_vars))))
 lambda = reg_1c$lambda[[i]]
-print(paste0('# of variables in ', i, 'th iteration: ', sum(reg_1c$beta[, i] != 0)))
-# print the i'th lasso regression coefficients
-# print(reg_1c$beta[, i])
 
 # Plot what the coefficients are doing as we increase lambda
 op <- par(mfrow=c(1,2))
@@ -226,23 +217,17 @@ df2a = df %>% select(tobacco, csex, mrace3, preterm,
                      dmage, dfage, dmeduc, dfeduc, ormoth, orfath,
                      disllb, dtotord, dmar, adequacy, nprevist)
 reg_2a1 <- glm(tobacco ~ ., data = df2a, family = "binomial")
-```
-
-```{r 2a1 table, results='asis'}
-stargazer(reg_2a1, title="First logit regression", header=FALSE, single.row=TRUE, type=table_type)
-```
-
-Removing sex of the child (csex) and prenatal adequacy (adequacy) from regressors (not significant).
-
-```{r 2a2 regression}
 # Try logit with only the significant covariates
 df2a2 = df2a %>% select(-csex, -adequacy)
 reg_2a2 <- glm(tobacco ~ ., data = df2a2, family = "binomial")
 ```
 
-```{r 2a2 table, results='asis'}
-stargazer(reg_2a2, title="Second logit regression", header=FALSE, single.row=TRUE, type=table_type)
+Model (1) below is with all the predetermined variables and model (2) is removing the insignificant variables.
+
+```{r 2a1 table, results='asis'}
+stargazer(reg_2a1, reg_2a2, title="Logit regressions", header=FALSE, single.row=TRUE, type=table_type)
 ```
+
 
 ```{r pscore histograms}
 labs <- paste("Actual smoking status:", c("Yes", "No"))
@@ -316,9 +301,19 @@ reg_2b = lm(dbrwt ~ ., data=df2b)
 
 # Estimate ATE
 ATE_2b = reg_2b$coefficients["tobacco1"]
+results_df = rbind(results_df, 
+                   data.frame(type = 'Pscore Regression with covariates',
+                              ate = ATE_2b,
+                              att = NA,
+                              number_vars = ncol(df2b)))
 
 reg_2bb = lm(dbrwt ~ tobacco + pscore, data=df2b)
 ATE_2bb = reg_2bb$coefficients["tobacco1"]
+results_df = rbind(results_df, 
+                   data.frame(type = 'Pscore Regression without covariates',
+                              ate = ATE_2bb,
+                              att = NA,
+                              number_vars = 2+1))
 ```
 
 The estimated ATE of tobacco use during pregnancy when including covariates and the pscore is `r round(ATE_2b,3)` -- smoking during pregnancy causes a `r abs(round(ATE_2b,3))` drop in grams of the birthweight of the child. When only including the pscore, the ATE is `r round(ATE_2bb,3)`. This is correct if we have unconfoundedness and we assume a constant treatment effect. 
@@ -374,6 +369,11 @@ weight_mean_smoker_treat = sum((df2c$tobacco==1) * df2c$weight2 * df2c$dbrwt) / 
 weight_mean_nonsmoker_treat = sum((df2c$tobacco==2) * df2c$weight2 * df2c$dbrwt) / c_norm2
 ATT2c = weight_mean_smoker_treat - weight_mean_nonsmoker_treat
 ATT2c
+results_df = rbind(results_df, 
+                   data.frame(type = 'Pscore weighted data',
+                              ate = ATE2c,
+                              att = ATT2c,
+                              number_vars = NA))
 ```
 The propensity-score-weighted estimated average treatment effect on the treated is `r round(ATT2c,2)`. If we take this result as significantly different from the ATE, then the effect of smoking on birthweight is stronger for those who look like smokers than it is in the general population. This seems to suggest that there are other, possibly unobserved, characteristics that decrease birthweight that are more common in the population that look like non-smokers than in population that looks like smokers.
 
@@ -396,14 +396,6 @@ Morgan and Todd (2008) gives us the weights for ATT and ATC (average treatment e
 We can use weighted kernel density estimation with the weights above:
 
 ```{r Problem 2d}
-# Estimate the counterfactual birthweight densities with a kernel density estimator
-# See Joel's notes for kernel density estimator
-# Play around with a bandwidth starting with half the default Stata bandwidth
-# For stata bandwidht, see rkdensity.pdf page 9 in this ps1b github folder.
-# You can also run on stata with no bandwidth specified, then print the
-# default bandwidth used using -display r(bwidth)-
-# Choose the same bandwidth for all the pictures
-
 # Stata default bandwidth
 m = min(var(df2c$dbrwt), IQR(df2c$dbrwt)/1.349)
 h_stata = 0.9*m/nrow(df2c)^(1/5)  # 44.14637 grams
@@ -540,7 +532,7 @@ ggplot(dens_df2, aes(x = birthweight, y = f)) +
   geom_polygon(aes(fill=smoker), alpha = 0.4, color='black', size=0.3)
 ```
 
-
+It is unclear to us if the pscore data weighting method relies on the assumption of heterogeneous treamtent effects, if this type of counterfactual density comparison is circular reasoning. 
 
 
 <!-- 
@@ -592,10 +584,14 @@ df3_merged <- df3_merged %>%
   mutate(t_k_weighted = dbrwt_diff * (N/N_total_3))  
 
 t_3 <- sum(df3_merged$t_k_weighted)
-
+results_df = rbind(results_df, 
+                   data.frame(type = 'Blocking on pscore (continuous weight)',
+                              ate = t_3,
+                              att = NA,
+                              number_vars = NA))
 ```
 
-First, for each group of smokers and nonsmokers, we see that the range of estimated propesntiy score is (`r round(as.numeric(minmax[1,3]), 3)`, `r round(as.numeric(minmax[1,2]), 4)`) for nonsmokers and (`r round(as.numeric(minmax[2,3]), 4)`, `r round(as.numeric(minmax[2,2]), 4)`) for smokers. The range is very similar, meaning overlap assumption is satisfied, and trimming for blocking is not needed. This also ensures that what we have done above, which is creating 100 equal bins between the minimum and maximum propensity score for each group, will be very similar to creating the same 100 bins for the two groups such that first bin is [0, 0.01] and so on.
+First, for each group of smokers and nonsmokers, we see that the range of estimated propensity score is (`r round(as.numeric(minmax[1,3]), 3)`, `r round(as.numeric(minmax[1,2]), 4)`) for nonsmokers and (`r round(as.numeric(minmax[2,3]), 4)`, `r round(as.numeric(minmax[2,2]), 4)`) for smokers. The range is very similar, meaning overlap assumption is satisfied, and trimming for blocking is not needed. This also ensures that what we have done above, which is creating 100 equal bins between the minimum and maximum propensity score for each group, will be very similar to creating the same 100 bins for the two groups such that first bin is [0, 0.01] and so on.
 
 Using the blocking estimator, we find a smoking treatment effect of `r round(t_3,3)`
 
@@ -641,6 +637,11 @@ df4_merged <- df4_merged %>%
   mutate(t_k_weighted = low_dbrwt_diff * (N/N_total_4))  
 
 t_4 <- sum(df4_merged$t_k_weighted)
+results_df = rbind(results_df, 
+                   data.frame(type = 'Blocking on pscore (indicator for low weight)',
+                              ate = t_4,
+                              att = NA,
+                              number_vars = NA))
 ```
 
 Using the blocking estimator, we find a smoking treatment effect of `r round(t_4,3)`. That is smokers are `r round(t_4,3)*100` percentage points more likely to have a baby with low birth weight than non-smokers. 
@@ -655,90 +656,6 @@ Using the blocking estimator, we find a smoking treatment effect of `r round(t_4
 ## Part (a)
 **Develop a regression that you are confident estimates $\mathbb{E}[birthweight\ |\ X]$ as $N\to\infty$? Why are you confident that your regression gets the CEF right?**
 
-```{r Problem 5a (try 1), eval=F}
-# Select variables
-df5a = df %>% 
-          select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
-                 dmage, mrace3, dmar, adequacy, csex, dplural) %>% 
-          mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
-
-# Check to make sure all are dummies
-dummies <- c("rectype", "pldel3", "cntocpop", "stresfip", 
-             "dmage", "mrace3", "dmar", "adequacy", "csex", "dplural")
-
-for (var in dummies) {
-  print(class(df5a[, var]))
-} 
-
-  
-# Run saturated regression
-reg_5a <- lm(dbrwt ~ rectype + pldel3 + cntocpop + stresfip +
-               dmage + mrace3 + dmar + adequacy + csex + dplural +
-               rectype*pldel3 + rectype*cntocpop + rectype+stresfip + 
-               rectype*dmage + rectype*mrace3 + rectype*dmar + 
-               rectype*adequacy + rectype*csex + rectype*dplural +
-               pldel3*cntocpop + pldel3*stresfip + pldel3*dmage + 
-               pldel3*mrace3 + pldel3*dmar + pldel3*adequacy +
-               pldel3*csex + pldel3*dplural +
-               cntocpop*stresfip + cntocpop*dmage + cntocpop*mrace3 + 
-               cntocpop*dmar + cntocpop*adequacy + cntocpop*csex + cntocpop*dplural +
-               stresfip*dmage +  stresfip*mrace3 +  stresfip*dmar + 
-               stresfip*adequacy +  stresfip*csex +  stresfip*dplural +
-               dmage*mrace3 + dmage*dmar + dmage*adequacy + 
-               dmage*csex + dmage*dplural + 
-               mrace3*dmar + mrace3*adequacy + mrace3*csex + mrace3*dplural +
-               dmar*adequacy + dmar*csex + dmar*dplural +
-               adequacy*csex + adequacy*dplural +
-               csex*dplural,
-            data = df5a)
-
-summary(reg_5a)
-```
-
-```{r, eval=FALSE}
-# The below code is just a helpful reference for using local variable names in for loop
-make_dummy <- c("rectype")
-for (var in make_dummy) {
-  name <- paste0(var, "_1")
-  df5a <- df5a %>%
-    mutate(!!name := ifelse(df5a[,var] == 1, 1 ,0))
-}
-```
-
-```{r Problem 5a Contending Version, eval=F}
-# Select variables (Error: cannot allocate vector of size 2616.7 Gb)
-#df5a = df %>%
-#          select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
-#                 dmage, mrace3, dmar, adequacy, csex, dplural) %>% 
-#          mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
-
-# Saturated Regression
-#reg_5a_2nd_attempt <- lm(dbrwt ~ (.)^10, data = df5a)
-#summary(reg_5a_2nd_attempt)
-
-
-
-# Select variables
-df5a = df %>% 
-          select(dbrwt, tobacco, rectype, pldel3, cntocpop, stresfip, 
-                 dmage, mrace3, dmar, adequacy, csex, dplural) %>% 
-          mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
-
-# Create factor variable (for dummies needed for regression) for unique combination of covariate values
-df5a_unique = df5a %>% 
-                select(-c(dbrwt, tobacco)) %>% 
-                distinct() %>% 
-                arrange(rectype, pldel3, cntocpop, stresfip, 
-                  dmage, mrace3, dmar, adequacy, csex, dplural) %>%
-                mutate(uniq = row_number())
-df5a <- full_join(df5a, df5a_unique, by = c("rectype", "pldel3", "cntocpop", 
-                  "stresfip", "dmage", "mrace3", "dmar", "adequacy", "csex", "dplural"))
-df5a <- df5a %>% mutate(uniq = as.factor(uniq))
-
-# Run regression on dbrwt with saturated model
-reg_5a <- lm(dbrwt ~ uniq, data = df5a)
-summary(reg_5a)
-```
 
 Saturated model for discrete regressors is a sufficient condition for a linear CEF. Hence, I would create a dummy variable for each unique combination of covariate values and run linear regression on these newly created dummy variables to estimate CEF.
 
@@ -747,57 +664,8 @@ Saturated model for discrete regressors is a sufficient condition for a linear C
 ## Part (b)
 **Now run the regression you propose above, but add the treatment (your binary smoking variable) as the righthand side variable of interest. Prove that if the treatment effect of smoking on birthweight is independent of the covariates in $X$, then exact matching and your regression estimate the same thing. You may assume the conditional independence assumption holds given the variables in $X$ listed above.**
 
-```{r Problem 5b (try 1), eval=F}
-# Select vars and smoking indicator
-df5b = df %>% 
-  select(dbrwt, tobacco, rectype, pldel3, cntocpop, stresfip, 
-                     dmage, mrace3, dmar, adequacy, csex, dplural) %>%
-  mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
 
-# Check to make sure all are dummies
-dummies <- c("tobacco", "rectype", "pldel3", "cntocpop", "stresfip", 
-                "dmage", "mrace3", "dmar", "adequacy", "csex", "dplural")
-for (var in dummies) {
-  print(class(df5b[, var]))
-}
-
-# Run regression
-reg_5b <- lm(dbrwt ~ tobacco + rectype + pldel3 + cntocpop + stresfip +
-               dmage + mrace3 + dmar + adequacy + csex + dplural +
-               rectype*pldel3 + rectype*cntocpop + rectype+stresfip + 
-               rectype*dmage + rectype*mrace3 + rectype*dmar + 
-               rectype*adequacy + rectype*csex + rectype*dplural +
-               pldel3*cntocpop + pldel3*stresfip + pldel3*dmage + 
-               pldel3*mrace3 + pldel3*dmar + pldel3*adequacy +
-               pldel3*csex + pldel3*dplural +
-               cntocpop*stresfip + cntocpop*dmage + cntocpop*mrace3 + 
-               cntocpop*dmar + cntocpop*adequacy + cntocpop*csex + cntocpop*dplural +
-               stresfip*dmage +  stresfip*mrace3 +  stresfip*dmar + 
-               stresfip*adequacy +  stresfip*csex +  stresfip*dplural +
-               dmage*mrace3 + dmage*dmar + dmage*adequacy + 
-               dmage*csex + dmage*dplural + 
-               mrace3*dmar + mrace3*adequacy + mrace3*csex + mrace3*dplural +
-               dmar*adequacy + dmar*csex + dmar*dplural +
-               adequacy*csex + adequacy*dplural +
-               csex*dplural
-               , data = df5b)
-summary(reg_5b)
-
-```
-
-```{r Problem 5b 5b Contending Version, eval=F}
-# Select variables (Error: cannot allocate vector of size 2616.7 Gb)
-#df5a = df %>% 
-#          select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
-#                 dmage, mrace3, dmar, adequacy, csex, dplural) %>% 
-#          mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
-
-# Saturated Regression
-#reg_5a_2nd_attempt <- lm(dbrwt ~ (.)^10, data = df5a)
-#summary(reg_5a_2nd_attempt)
-
-
-
+```{r Problem 5b, eval=F}
 # Select variables
 df5a = df %>% 
           select(dbrwt, tobacco, rectype, pldel3, cntocpop, stresfip, 
@@ -821,7 +689,24 @@ reg_5a <- lm(dbrwt ~ tobacco + uniq, data = df5a)
 end_t = proc.time()
 print('time to regress:')
 print(end_t[3] - start_t[3])
-summary(reg_5a)
+ATE5b = reg_5a$coefficients['tobacco1']
+
+results_df = rbind(results_df, 
+                   data.frame(type = 'Saturated regression',
+                              ate = ATE5b,
+                              att = NA,
+                              number_vars = length(levels(df5a$uniq)) + 2))
+```
+
+```{r Problem 5b table, results='asis', eval=F}
+stargazer(reg_5a,
+          type = 'latex',
+          keep = "tobacco1(?!:)",
+          perl=TRUE, header = FALSE, table.placement = '!h',
+          title = "Saturated Regression", 
+          align = TRUE, no.space = TRUE, font.size = "small",
+          notes = c("For brevity, only the treatment is presented;",
+                    paste(length(levels(df5a$uniq)), "interaction terms are not shown.")))
 ```
 
 Let Y = dbrwt, D = tobacco, and X = covariates listed for quesiton 5a. Assume $Y_i = \alpha + \beta D_i + \delta h(x_i) + v_i$ and thereby $Y_i = \alpha + \beta \tilde{D_i} + \delta h(x_i) + u_i$, where $\tilde{D_i} = D_i - \mathbb{E}[D_i|X_i]$ and $u_i = \epsilon_i + \beta \mathbb{E}[D_i|X_i]$. We showed, in class, that $\mathbb{E}[u_i \tilde{D_i}] = 0$ under un-confounded-ness and homogeneous treatment, and can get a consistent estimate of $\beta$ if the CEF is known. While our CEF is not known, given we have linear CEF with a saturated model, we can simply include X's as additional control.
@@ -855,6 +740,18 @@ Furthermore, we have assumed CIA holds, that conditioning on X's, materal tobacc
 ## Part (c)
 **Develop a weighted version of the exact matching estimator that estimates the same thing as the regression above (regardless of whether the treatment effect is independent of covariates).**
 
+\[ 
+\begin{aligned}
+  \hat{\tau}_M &= \frac{1}{N_T} \sum_{i : D_i=1} \left[y_i - \sum_{j : D_j=0} w_i(j) y_j\right]\\[2em]
+  \text{where } w_i(j) &= 
+  \begin{cases}
+    \frac{1}{N_{CC}(i)} & \text{if } i \& j\text{ share a cell}\\[.5em]
+    0 & \text{o.w.}\\
+  \end{cases}
+\end{aligned} 
+\]
+
+Given discrete covariates establishing cells for exact matching, we can set $w_i(j)$ equal to 0 for control observations $j$ that do not get (exactly) matched to treatment observation $i$; for control observations with same covariates matched to $i$, we would set $w_i(j)$ equal to $\frac{1}{N_{CC}(i)}$, where $N_{CC}(i)$ is number of control observations that share the same covariate cell as observation $i$. 
 
 
 
@@ -940,6 +837,29 @@ The regression has more observations because it includes all the observation in 
 In conclusion, the treatment effect of mother's smoking habits on baby birthweight appears to be robust across a number of identification strategies. Each method--be it matching by propensity score or on covariates, or using a egression or direct matching estimator--produces extremely similar results. While surprising on the surface, the reason for this is simple--they all use essentially the same mechanics under the hood. 
 
 Each of these methods compares treated and untreated observations based on similar characteristics. In the case of propensity score matching, observations are weighted by their likelihood of being treated, giving more weight to untreated observations that by all other measures look like treated observations. In the case of exact matching, treated observations are paired with untreated observations based on relevant characteristics and their differences are computed. For these reasons, we believe the true effect of smoking on baby birthweight to be around -220.
+
+```{r echo=F, eval=F}
+# qwraps2
+
+our_summary1 <-
+  list("Miles Per Gallon" =
+       list("Series Regression"       = ~ reg_1b_dbrwt$coefficients['tobacco1'],
+            "Regression with pscore"       = ~ reg_2bb$coefficients["tobacco1"],
+       "Displacement" =
+       list("min"       = ~ min(disp),
+            "median"    = ~ median(disp),
+            "max"       = ~ max(disp),
+            "mean (sd)" = ~ qwraps2::mean_sd(disp)),
+       "Weight (1000 lbs)" =
+       list("min"       = ~ min(wt),
+            "max"       = ~ max(wt),
+            "mean (sd)" = ~ qwraps2::mean_sd(wt)),
+       "Forward Gears" =
+       list("Three" = ~ qwraps2::n_perc0(gear == 3),
+            "Four"  = ~ qwraps2::n_perc0(gear == 4),
+            "Five"  = ~ qwraps2::n_perc0(gear == 5))
+       )
+```
 
 
 
