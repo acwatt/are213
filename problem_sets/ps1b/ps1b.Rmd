@@ -903,7 +903,9 @@ The regression has more observations because it includes all the observation in 
 # Problem 6
 **Concisely and coherently summarize your overall results, providing some intuition. Write it like you would the conclusion of a paper. In this summary, describe whether you think your best estimate of the effects of smoking is credibly identified. State why or why not.**
 
+In conclusion, the treatment effect of mother's smoking habits on baby birthweight appears to be robust across a number of identification strategies. Each method--be it matching by propensity score or on covariates, or using a egression or direct matching estimator--produces extremely similar results. While surprising on the surface, the reason for this is simple--they all use essentially the same mechanics under the hood. 
 
+Each of these methods compares treated and untreated observations based on similar characteristics. In the case of propensity score matching, observations are weighted by their likelihood of being treated, giving more weight to untreated observations that by all other measures look like treated observations. In the case of exact matching, treated observations are paired with untreated observations based on relevant characteristics and their differences are computed. For these reasons, we believe the true effect of smoking on baby birthweight to be around -220.
 
 
 
