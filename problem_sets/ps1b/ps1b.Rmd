@@ -855,8 +855,13 @@ Furthermore, we have assumed CIA holds, that conditioning on X's, materal tobacc
 ## Part (c)
 **Develop a weighted version of the exact matching estimator that estimates the same thing as the regression above (regardless of whether the treatment effect is independent of covariates).**
 
-```{r Problem 5c}
 
+
+
+## Part (d)
+**Estimate the weighted matching estimator you propose. Compare it to the regression estimate from part (b). Are they similar?**
+
+```{r Problem 5d, eval=F}
 # Make two df5a--one of treated and one of untreated. 
 df5c <- df5a %>%
   select(dbrwt, tobacco, uniq)
@@ -897,35 +902,6 @@ df5c2 <- df5c2 %>%
   mutate(diff_wt = dbrwt_t - dbrwt_c)
 
 summary(df5c2$diff_wt)
-
-```
-
-
-
-## Part (d)
-**Estimate the weighted matching estimator you propose. Compare it to the regression estimate from part (b). Are they similar?**
-
-```{r Problem 5d, eval=F}
-count <- df5a %>% 
-            count(tobacco, uniq) %>% 
-            arrange(uniq, tobacco) %>% 
-            reshape(idvar = "uniq", timevar = "tobacco", direction = "wide") %>%
-            mutate(bin_w_trt_cont = ifelse(is.na(n.1) |is.na(n.2), NA, 1)) %>%
-            rename(tobacco_2 = n.2, tobacco_1 = n.1) %>%
-            gather(tobacco_val, count, -c("uniq", "bin_w_trt_cont")) %>%
-            mutate(tobacco = as.factor(ifelse(tobacco_val == "tobacco_1", 1, 2))) %>%
-            select(uniq, tobacco, count, bin_w_trt_cont, -tobacco_val) %>%
-            arrange(uniq, tobacco)
-
-head(count, n=30)
-
-            
-df5c <- full_join(df5a, count, by = c("tobacco", "uniq")) %>% 
-          mutate(weight_control_cell = NA, weight_control_cell = ifelse(tobacco = 1, 1/n, NA), 
-                 wijyj = weight_control_cell*dbrwt)
-
-
-
 ```
 
 
