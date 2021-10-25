@@ -504,7 +504,7 @@ As we increase the bandwidth, the density esimtate gets smoother and smoother.
 
 ```
 
-
+The benefit of weighting by propensity score is that it compares similar observations to one another puts more weight on those that look like treated observations. This is fantastic in circumstances where the control and treated share significant overlap on matching variables. However, if there is not significant overlap on the matching variables between treated and untreated observations, then weird outlier untreated observations--for better or for worse--are given extremely heavy weight. If we trust the outlier untreated observations, this may be reasonable, however the fact that they are outliers among the untreated is also a worrying sign such outliers may be unrepresentative as counterfactual controls.
 
 ## Part (g)
 
@@ -806,6 +806,14 @@ Furthermore, we have assumed CIA holds, that conditioning on X's, materal tobacc
 ## Part (c)
 **Develop a weighted version of the exact matching estimator that estimates the same thing as the regression above (regardless of whether the treatment effect is independent of covariates).**
 
+```{r Problem 5d}
+
+#Match on covariates
+match_on <- c("rectype", "pldel3", "cntocpop", 
+              "stresfip", "dmage", "mrace3", "dmar", "adequacy", "csex", "dplural")
+
+
+```
 
 
 
@@ -820,6 +828,7 @@ Furthermore, we have assumed CIA holds, that conditioning on X's, materal tobacc
 ## Part (e)
 **Is the sample size of your regression the same as the sample size of your matching estimator, or does the regression have more observations? If the regression has more observations, why don’t these extra observations influence the treatment effect estimate?**
 
+The regression has more observations. However, these do not influence the treatment effect estimate because treated and untreated observations without any untreated or treated match (respectively) are given a weight of zero.
 
 
 ## Part (f)
