@@ -798,12 +798,47 @@ Furthermore, we have assumed CIA holds, that conditioning on X's, materal tobacc
 ## Part (c)
 **Develop a weighted version of the exact matching estimator that estimates the same thing as the regression above (regardless of whether the treatment effect is independent of covariates).**
 
-```{r Problem 5d}
+```{r Problem 5c}
 
-#Match on covariates
-match_on <- c("rectype", "pldel3", "cntocpop", 
-              "stresfip", "dmage", "mrace3", "dmar", "adequacy", "csex", "dplural")
+# Make two df5a--one of treated and one of untreated. 
+df5c <- df5a %>%
+  select(dbrwt, tobacco, uniq)
+df5c_t <- subset(df5c, tobacco ==1)
+df5c_t <- df5c_t %>%
+  mutate(dbrwt_t = dbrwt) %>%
+  select(dbrwt_t, uniq)
 
+df5c_c <- subset(df5c, tobacco ==2)
+df5c_c <- df5c_c %>%
+  mutate(dbrwt_c = dbrwt) %>%
+  select(dbrwt_c, uniq)
+
+# Get N treated and controls in each bucket
+df5c_t2 <- df5c_t %>%
+  group_by(uniq) %>%
+  mutate(N_t = n())
+
+df5c_c2 <- df5c_c %>%
+  group_by(uniq) %>%
+  mutate(count = n())
+
+# Collapse controls down to uniq and take average of weight
+df5c_c3 <- aggregate(df5c_c2$count, list(df5c_c2$uniq), mean)
+df5c_c3 <- df5c_c3 %>%
+  rename(uniq = Group.1, N_c = x)
+
+df5c_c4 <- aggregate(df5c_c$dbrwt_c, list(df5c_c$uniq), mean)
+df5c_c4 <- df5c_c4 %>%
+  rename(uniq = Group.1, dbrwt_c = x)
+
+df5c_c5 <- merge(df5c_c3, df5c_c4, by = "uniq", all.x = F, all.y = F)
+
+# Merge the treated and collapsed control obs
+df5c2 <- merge(df5c_t2, df5c_c5, by = "uniq", all.x = F, all.y = F)
+df5c2 <- df5c2 %>%
+  mutate(diff_wt = dbrwt_t - dbrwt_c)
+
+summary(df5c2$diff_wt)
 
 ```
 
