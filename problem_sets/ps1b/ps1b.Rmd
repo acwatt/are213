@@ -151,7 +151,6 @@ stargazer(reg_1b_dbrwt, reg_1b_fmaps, reg_1b_omaps,
 ```
 
 
-
 ## Part (c)
 
 **Use the LASSO to determine which covariates (and higher order terms) to include in your regression from part (b). Do you end up dropping some covariates that you had thought might be necessary to include?**
@@ -537,11 +536,12 @@ minmax <- df3 %>%
 #Creating bins separately for smokers and non-smokers
 df3_smoke <- df3 %>%
   filter(smoke == 1) %>%
-  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
+  mutate(pscore_bin = ceiling(pscore * 100))
+
 
 df3_nosmoke <- df3 %>%
   filter(smoke == 0) %>%
-  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
+  mutate(pscore_bin = ceiling(pscore * 100))
 
 #Generating t_k (treatment effects for bins)
 df3_smoke_mean <- df3_smoke %>% 
@@ -586,11 +586,11 @@ df4 <- df3 %>%
 # Creating bins separately for smokers and non-smokers
 df4_smoke <- df4 %>%
   filter(smoke == 1) %>%
-  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
+  mutate(pscore_bin = ceiling(pscore * 100))
 
 df4_nosmoke <- df4 %>%
   filter(smoke == 0) %>%
-  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
+  mutate(pscore_bin = ceiling(pscore * 100))
 
 # Generating t_k (treatment effects for bins)
 df4_smoke_mean <- df4_smoke %>% 
@@ -677,18 +677,6 @@ for (var in make_dummy) {
 ```
 
 ```{r Problem 5a Contending Version, eval=F}
-# Select variables (Error: cannot allocate vector of size 2616.7 Gb)
-#df5a = df %>% 
-#          select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
-#                 dmage, mrace3, dmar, adequacy, csex, dplural) %>% 
-#          mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
-
-# Saturated Regression
-#reg_5a_2nd_attempt <- lm(dbrwt ~ (.)^10, data = df5a)
-#summary(reg_5a_2nd_attempt)
-
-
-
 # Select variables
 df5a = df %>% 
           select(dbrwt, tobacco, rectype, pldel3, cntocpop, stresfip, 
@@ -756,19 +744,7 @@ summary(reg_5b)
 
 ```
 
-```{r Problem 5b 5b Contending Version, eval=F}
-# Select variables (Error: cannot allocate vector of size 2616.7 Gb)
-#df5a = df %>% 
-#          select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
-#                 dmage, mrace3, dmar, adequacy, csex, dplural) %>% 
-#          mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
-
-# Saturated Regression
-#reg_5a_2nd_attempt <- lm(dbrwt ~ (.)^10, data = df5a)
-#summary(reg_5a_2nd_attempt)
-
-
-
+```{r Problem 5b Contending Version, eval=F}
 # Select variables
 df5a = df %>% 
           select(dbrwt, tobacco, rectype, pldel3, cntocpop, stresfip, 
@@ -787,7 +763,6 @@ df5a <- full_join(df5a, df5a_unique, by = c("rectype", "pldel3", "cntocpop",
 df5a <- df5a %>% mutate(uniq = as.factor(uniq))
 
 # Run regression on dbrwt with saturated model (incl tobacco)
-lm(dbrwt ~ .^2, data=df5a)
 reg_5a <- lm(dbrwt ~ tobacco + uniq, data = df5a)
 summary(reg_5a)
 ```
