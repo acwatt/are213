@@ -776,7 +776,7 @@ reg_5a <- lm(dbrwt ~ tobacco + uniq, data = df5a)
 summary(reg_5a)
 ```
 
-Let Y = dbrwt, D = tobacco, and X = covariates listed for quesiton 5a. Assume $Y_i = \alpha + \beta D_i + \delta h(x_i) + v_i$ and thereby $Y_i = \alpha + \beta \tilde{D_i} + \delta h(x_i) + u_i$, where $\tilde{D_i} = D_i - \mathbb{E}[D_i|X_i] $ and $u_i = \epsilon_i + \beta \mathbb{E}[D_i|X_i]$. We showed, in class, that $\mathbb{E}[u_i \tilde{D_i}] = 0$ under un-confounded-ness and homogeneous treatment, and can get a consistent estimate of $\beta$ if the CEF is known. While our CEF is not known, given we have linear CEF with a saturated model, we can simply include X's as additional control.
+Let Y = dbrwt, D = tobacco, and X = covariates listed for quesiton 5a. Assume $Y_i = \alpha + \beta D_i + \delta h(x_i) + v_i$ and thereby $Y_i = \alpha + \beta \tilde{D_i} + \delta h(x_i) + u_i$, where $\tilde{D_i} = D_i - \mathbb{E}[D_i|X_i]$ and $u_i = \epsilon_i + \beta \mathbb{E}[D_i|X_i]$. We showed, in class, that $\mathbb{E}[u_i \tilde{D_i}] = 0$ under un-confounded-ness and homogeneous treatment, and can get a consistent estimate of $\beta$ if the CEF is known. While our CEF is not known, given we have linear CEF with a saturated model, we can simply include X's as additional control.
 
 Let matrix $Z = [D \; E[D|X_i]]$.
 
@@ -814,6 +814,25 @@ Furthermore, we have assumed CIA holds, that conditioning on X's, materal tobacc
 **Estimate the weighted matching estimator you propose. Compare it to the regression estimate from part (b). Are they similar?**
 
 ```{r Problem 5d}
+count <- df5a %>% 
+            count(tobacco, uniq) %>% 
+            arrange(uniq, tobacco) %>% 
+            reshape(idvar = "uniq", timevar = "tobacco", direction = "wide") %>%
+            mutate(bin_w_trt_cont = ifelse(is.na(n.1) |is.na(n.2), NA, 1)) %>%
+            rename(tobacco_2 = n.2, tobacco_1 = n.1) %>%
+            gather(tobacco_val, count, -c("uniq", "bin_w_trt_cont")) %>%
+            mutate(tobacco = as.factor(ifelse(tobacco_val == "tobacco_1", 1, 2))) %>%
+            select(uniq, tobacco, count, bin_w_trt_cont, -tobacco_val) %>%
+            arrange(uniq, tobacco)
+
+head(count, n=30)
+
+            
+df5c <- full_join(df5a, count, by = c("tobacco", "uniq")) %>% 
+          mutate(weight_control_cell = NA, weight_control_cell = ifelse(tobacco = 1, 1/n, NA), 
+                 wijyj = weight_control_cell*dbrwt)
+
+
 
 ```
 
