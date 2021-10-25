@@ -138,6 +138,9 @@ names(reg_1b_omaps$coefficients) <- gsub("xx","",names(reg_1b_omaps$coefficients
 ```
 
 
+          keep = "tobacco1(?!:)",
+          perl=TRUE,
+          
 ```{r 1B table abbreviated, results='asis', eval=T}
 stargazer(reg_1b_dbrwt, reg_1b_fmaps, reg_1b_omaps,
           type = 'latex',
@@ -145,9 +148,15 @@ stargazer(reg_1b_dbrwt, reg_1b_fmaps, reg_1b_omaps,
           perl=TRUE,
           title = "Series Regressions", 
           align = TRUE, no.space = TRUE, font.size = "small",
-          table.placement = "!h", header = FALSE,
           notes = c("For brevity, only the original variables are presented;",
                     "300+ second order / interaction terms are not shown."))
+```
+
+
+## REVIEW THIS BEFORE SUBMISSION: Need to change to longtable before final submission**
+
+```
+A table enviroment cannot be broken across pages. Delete \begin{table}\centering and \end{table}, replace tabular with longtable, move \caption and label to immediately after \begin{longtable}{..}. And add \usepackage{longtable} to the preamble.
 ```
 
 
@@ -159,7 +168,7 @@ For brevity, I continue on with the exercise with only one dependent variable (d
 
 Under this setting, predicted impact of smoking on birthweight is -76.9.
 
-We ended up dropping 'dmage' and 'dfage', or age of parents, which we expected to have some correlation with infant's general health and/or weight. On the other hand, variables such as 'csex' and 'preterm', which we expected to have a stronger relationship with infant weight (i.e. male infant might be bigger on average, and previous baby's birth weight might be predictive of the baby of interest), are not dropped as expected.
+We ended up dropping \texttt{dmage} and 'dfage', or age of parents, which we expected to have some correlation with infant's general health and/or weight. On the other hand, variables such as 'csex' and 'preterm', which we expected to have a stronger relationship with infant weight (i.e. male infant might be bigger on average, and previous baby's birth weight might be predictive of the baby of interest), are not dropped as expected.
 
 One problem, however, with what we have done below is that while an interaction term that includes 'dmage' is included, the standalone variable 'dmage' is dropped, which might be undesirable. 
 
@@ -193,7 +202,7 @@ In both graphs, each curve corresponds to a variable. They show the path of its
   model selection.
 
 Here are the non-zero coefficients:
-```{r 1C table, results='asis', echo=F}
+```{r 1C table, results='asis'}
 knitr::kable(reg_1c$beta[, i][reg_1c$beta[, i] != 0], 
              caption=paste0("Lasso Regression for top ", num_vars, " vars (lambda = ", lambda, ")"),
              col.names = 'Non-zero Coefficients', align = "l", digits = 3)
@@ -216,36 +225,43 @@ knitr::kable(reg_1c$beta[, i][reg_1c$beta[, i] != 0],
 df2a = df %>% select(tobacco, csex, mrace3, preterm,
                      dmage, dfage, dmeduc, dfeduc, ormoth, orfath,
                      disllb, dtotord, dmar, adequacy, nprevist)
-reg_2a1 <- glm(tobacco ~ ., data = df2a, family = "binomial")# Try logit with only the significant covariates
+reg_2a1 <- glm(tobacco ~ ., data = df2a, family = "binomial")
+```
+
+```{r 2a1 table, results='asis'}
+stargazer(reg_2a1, title="First logit regression", header=FALSE, single.row=TRUE, type=table_type)
+```
+
+Removing sex of the child (csex) and prenatal adequacy (adequacy) from regressors (not significant).
+
+```{r 2a2 regression}
+# Try logit with only the significant covariates
 df2a2 = df2a %>% select(-csex, -adequacy)
 reg_2a2 <- glm(tobacco ~ ., data = df2a2, family = "binomial")
 ```
 
-Model (1) is the Logit regression Removing sex of the child (csex) and prenatal adequacy (adequacy) from regressors (not significant).
-```{r 2a1 table, results='asis'}
-stargazer(reg_2a1, reg_2a2, title="Logit regressions", header=FALSE, single.row=TRUE, type=table_type)
+```{r 2a2 table, results='asis'}
+stargazer(reg_2a2, title="Second logit regression", header=FALSE, single.row=TRUE, type=table_type)
 ```
 
 ```{r pscore histograms}
-p1_df <- data.frame(p1_score = predict(reg_2a1, type = "response"), tobacco = reg_2a1$model$tobacco)
-p2_df <- data.frame(p2_score = predict(reg_2a2, type = "response"), tobacco = reg_2a2$model$tobacco)
-
 labs <- paste("Actual smoking status:", c("Yes", "No"))
-p1_df %>%
-  mutate(tobacco = ifelse(tobacco == 1, labs[1], labs[2])) %>%
-  ggplot(aes(x = p1_score)) +
-  geom_histogram(color = "white") +
-  facet_wrap(~tobacco) +
-  xlab("Probability of maternal smoking") +
-  theme_bw()
+p1_df <- data.frame(p1_score = predict(reg_2a1, type = "response"), tobacco = reg_2a1$model$tobacco) %>%
+  mutate(tobacco = ifelse(tobacco == 1, labs[1], labs[2]))
+p2_df <- data.frame(p2_score = predict(reg_2a2, type = "response"), tobacco = reg_2a2$model$tobacco) %>%
+  mutate(tobacco = ifelse(tobacco == 1, labs[1], labs[2]))
 
-p2_df %>%
-  mutate(tobacco = ifelse(tobacco == 1, labs[1], labs[2])) %>%
-  ggplot(aes(x = p2_score)) +
-  geom_histogram(color = "white") +
-  facet_wrap(~tobacco) +
-  xlab("Probability of maternal smoking") +
-  theme_bw()
+ggplot(p1_df, aes(x=p1_score, fill = tobacco)) +
+  geom_histogram(position = "identity", alpha = 0.5,
+                 mapping = aes(y = stat(density))) +
+  xlab("Probability of maternal smoking ") +
+  ggtitle("P-scores estimated using all predetermined covariates")
+
+ggplot(p1_df, aes(x=p1_score, fill = tobacco)) +
+  geom_histogram(position = "identity", alpha = 0.5,
+                 mapping = aes(y = stat(density))) +
+  xlab("Probability of maternal smoking ") +
+  ggtitle("P-scores estimated using significant predetermined covariates")
 ```
 
 ```{r 2a pscores}
@@ -459,6 +475,7 @@ density_fun(3000, filter(df2d, tobacco==2), 2*h2) / norm_cons1
 **Take one of your densities and display an estimate of the density using different bandwidths as well as the one you settled on. What happens with bigger (smaller) bandwidths?**
 
 Smokers' density with bandwidth = 1/2 * Stata bandwidth
+
 ```{r Problem 2e 0.5, echo=F}
 dens1_custom = sapply(x_vec, density_fun, df=filter(df2d, tobacco==1), h=0.5*h1)
 norm_cons1 = sum(diff(x_vec) * zoo::rollmean(dens1_custom, 2))
@@ -468,6 +485,7 @@ ggplot(dens_df, aes(x = birthweight, y = f)) +
 ```
 
 Smokers' density with bandwidth = 1 Stata bandwidth
+
 ```{r Problem 2e 1, echo=F}
 dens1_custom = sapply(x_vec, density_fun, df=filter(df2d, tobacco==1), h=h1)
 norm_cons1 = sum(diff(x_vec) * zoo::rollmean(dens1_custom, 2))
@@ -477,6 +495,7 @@ ggplot(dens_df, aes(x = birthweight, y = f)) +
 ```
 
 Smokers' density with bandwidth = 2 Stata bandwidth
+
 ```{r Problem 2e 2, echo=F}
 dens1_custom = sapply(x_vec, density_fun, df=filter(df2d, tobacco==1), h=2*h1)
 norm_cons1 = sum(diff(x_vec) * zoo::rollmean(dens1_custom, 2))
@@ -491,25 +510,36 @@ As we increase the bandwidth, the density esimtate gets smoother and smoother.
 ## Part (f)
 **What are the benefits of the weighting approach (from part c)? What are the potential drawbacks? Pay particular attention to to the issue of people with extremely high and extremely low values of the propensity score.**
 
-```{r Problem 2f}
+Weighting on the propensity score, we can reduce the dimensionality of the covariate space to compare observations that have similar probabilities of selection into the treatment group. If we have good covariate overlap, this means we can estimate treatment effects based on comparisons of control and treatment observations that "look alike." 
 
-```
+If we don't have good covariate overlap, however, we may have very few observations that are matched to the opposite treatment group. We expect the majority of the control observations to have a low propensity score (since it's estimating the probability of treatment based on covariates) and the majority of treatment observations to have high propensity scores. Without good covariate overlap, we would expect very few treatment observations to have very low p-scores (near 0) and very few control observations to have high p-scores (near 1).
 
-The benefit of weighting by propensity score is that it compares similar observations to one another puts more weight on those that look like treated observations. This is fantastic in circumstances where the control and treated share significant overlap on matching variables. However, if there is not significant overlap on the matching variables between treated and untreated observations, then weird outlier untreated observations--for better or for worse--are given extremely heavy weight. If we trust the outlier untreated observations, this may be reasonable, however the fact that they are outliers among the untreated is also a worrying sign such outliers may be unrepresentative as counterfactual controls.
+Since our weights are $1/p(X)$ for treated observations, the weights for the rare treatment observations with p-scores near 0 can be extremely large and thus we might be relying on relatively few observations to estimate the treatment effect. Similarly, the weights are $1/(1-p(X))$ for control observations and we could be heavily weighting few observations with p-scores near 1.  If we trust the outlier untreated observations, this may be reasonable, however the fact that they are outliers among the untreated is also a worrying sign such outliers may be unrepresentative as counterfactual controls.
+
 
 ## Part (g)
 
 **Present your findings and interpret the results on the relationship between birthweight and smoking. For the estimates in parts (b) and (c), consider which of the following conditions must hold in order for that estimate to be valid:**
 
-- The treatment effect heterogeneity is linear in the propensity score.
-- The treatment effect heterogeneity is not linear in the propensity score.
-- The decision to smoke is completely randomly assigned.
-- Conditional on the exogenous variables the decision to smoke is randomly assigned.
+(i) The treatment effect heterogeneity is linear in the propensity score.
+(ii) The treatment effect heterogeneity is not linear in the propensity score.
+(iii) The decision to smoke is completely randomly assigned.
+(iv) Conditional on the exogenous variables the decision to smoke is randomly assigned.
 
+For part (b) where we estimate the ATE using a regression on the treatment and the pscore, we estimate an effect of `r round(ATE_2bb,1)` -- that is, on average, we expect that smoking during pregnancy decreases the birthweight of the child by `r round(abs(ATE_2bb),1)` grams for the general population (assuming our sample is representative of the general population). This requires that condition (iv) holds, and additionally, that the treatment effect is homogeneous since we are regressing on just the treatment indicator and the pscore.
+
+For part (c), we use the pscore to weight the observations to create balanced set of covariates and estimate the average treatment effect to be `r round(ATE2c,1)` -- on average, we expect that smoking during pregnancy decreases the birthweight of the child by `r round(abs(ATE2c),1)` grams for the general population. We also estimate the average effect on the treated to be `r round(ATT2c,1)` -- on average for women that smoke, we expect that smoking during pregnancy decreases the birthweight of the child by `r round(abs(ATE2c),1)` grams. These results both require conditions (i) and (iv) to be valid.
+
+We can assess the homogeneous treatment effect assumption by comparing the shape of the counterfactual distributions. Below, we have shifted the smokers' distribution up by the ATE estimated in part (c). We can see that the distributions are extremely close, giving evidence that the treatment effect is fairly homogenous in across the pscore values.
 
 ```{r Problem 2g}
+dens_df2 = dens_df %>%
+  mutate(birthweight = ifelse(smoker=='yes', birthweight - ATE2c, birthweight))
 
+ggplot(dens_df2, aes(x = birthweight, y = f)) +
+  geom_polygon(aes(fill=smoker), alpha = 0.4, color='black', size=0.3)
 ```
+
 
 
 
@@ -536,12 +566,11 @@ minmax <- df3 %>%
 #Creating bins separately for smokers and non-smokers
 df3_smoke <- df3 %>%
   filter(smoke == 1) %>%
-  mutate(pscore_bin = ceiling(pscore * 100))
-
+  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
 
 df3_nosmoke <- df3 %>%
   filter(smoke == 0) %>%
-  mutate(pscore_bin = ceiling(pscore * 100))
+  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
 
 #Generating t_k (treatment effects for bins)
 df3_smoke_mean <- df3_smoke %>% 
@@ -586,11 +615,11 @@ df4 <- df3 %>%
 # Creating bins separately for smokers and non-smokers
 df4_smoke <- df4 %>%
   filter(smoke == 1) %>%
-  mutate(pscore_bin = ceiling(pscore * 100))
+  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
 
 df4_nosmoke <- df4 %>%
   filter(smoke == 0) %>%
-  mutate(pscore_bin = ceiling(pscore * 100))
+  mutate(pscore_bin = cut(pscore, breaks = 100, labels = seq(1,100)))
 
 # Generating t_k (treatment effects for bins)
 df4_smoke_mean <- df4_smoke %>% 
@@ -677,6 +706,18 @@ for (var in make_dummy) {
 ```
 
 ```{r Problem 5a Contending Version, eval=F}
+# Select variables (Error: cannot allocate vector of size 2616.7 Gb)
+#df5a = df %>%
+#          select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
+#                 dmage, mrace3, dmar, adequacy, csex, dplural) %>% 
+#          mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
+
+# Saturated Regression
+#reg_5a_2nd_attempt <- lm(dbrwt ~ (.)^10, data = df5a)
+#summary(reg_5a_2nd_attempt)
+
+
+
 # Select variables
 df5a = df %>% 
           select(dbrwt, tobacco, rectype, pldel3, cntocpop, stresfip, 
@@ -744,7 +785,19 @@ summary(reg_5b)
 
 ```
 
-```{r Problem 5b Contending Version, eval=F}
+```{r Problem 5b 5b Contending Version, eval=F}
+# Select variables (Error: cannot allocate vector of size 2616.7 Gb)
+#df5a = df %>% 
+#          select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
+#                 dmage, mrace3, dmar, adequacy, csex, dplural) %>% 
+#          mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
+
+# Saturated Regression
+#reg_5a_2nd_attempt <- lm(dbrwt ~ (.)^10, data = df5a)
+#summary(reg_5a_2nd_attempt)
+
+
+
 # Select variables
 df5a = df %>% 
           select(dbrwt, tobacco, rectype, pldel3, cntocpop, stresfip, 
@@ -763,7 +816,11 @@ df5a <- full_join(df5a, df5a_unique, by = c("rectype", "pldel3", "cntocpop",
 df5a <- df5a %>% mutate(uniq = as.factor(uniq))
 
 # Run regression on dbrwt with saturated model (incl tobacco)
+start_t = proc.time()
 reg_5a <- lm(dbrwt ~ tobacco + uniq, data = df5a)
+end_t = proc.time()
+print('time to regress:')
+print(end_t[3] - start_t[3])
 summary(reg_5a)
 ```
 
@@ -833,6 +890,7 @@ df5c_c4 <- df5c_c4 %>%
 
 df5c_c5 <- merge(df5c_c3, df5c_c4, by = "uniq", all.x = F, all.y = F)
 
+
 # Merge the treated and collapsed control obs
 df5c2 <- merge(df5c_t2, df5c_c5, by = "uniq", all.x = F, all.y = F)
 df5c2 <- df5c2 %>%
@@ -847,7 +905,7 @@ summary(df5c2$diff_wt)
 ## Part (d)
 **Estimate the weighted matching estimator you propose. Compare it to the regression estimate from part (b). Are they similar?**
 
-```{r Problem 5d}
+```{r Problem 5d, eval=F}
 count <- df5a %>% 
             count(tobacco, uniq) %>% 
             arrange(uniq, tobacco) %>% 
