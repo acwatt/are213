@@ -687,28 +687,29 @@ df5a <- df5a %>% mutate(uniq = as.factor(uniq))
 
 # Run regression on dbrwt with saturated model (incl tobacco)
 start_t = proc.time()
-reg_5a <- lm(dbrwt ~ tobacco + uniq, data = df5a)
+reg_5b <- lm(dbrwt ~ tobacco + uniq, data = df5a)
 end_t = proc.time()
 print('time to regress:')
 print(end_t[3] - start_t[3])
-ATE5b = reg_5a$coefficients['tobacco1']
+ATE5b = reg_5b$coefficients['tobacco1']
 
 results_df = rbind(results_df, 
                    data.frame(type = 'Saturated regression',
                               ate = ATE5b,
                               att = NA,
-                              number_vars = length(levels(df5a$uniq)) + 2))
+                              number_vars = length(levels(df5b$uniq)) + 2))
 ```
 
+
 ```{r Problem 5b table, results='asis', eval=T}
-stargazer(reg_5a,
+stargazer(reg_5b,
           type = 'latex',
           keep = "tobacco1",
           perl=TRUE, header = FALSE, table.placement = '!h',
           title = "Saturated Regression", 
           align = TRUE, no.space = TRUE, font.size = "small",
           notes = c("For brevity, only the treatment is presented;",
-                    paste(length(levels(df5a$uniq)), "interaction terms are not shown.")))
+                    paste(length(levels(df5a$uniq)), "indicator for cells are not shown.")))
 ```
 
 Let Y = dbrwt, D = tobacco, and X = covariates listed for quesiton 5a. Assume $Y_i = \alpha + \beta D_i + \delta h(x_i) + v_i$ and thereby $Y_i = \alpha + \beta \tilde{D_i} + \delta h(x_i) + u_i$, where $\tilde{D_i} = D_i - \mathbb{E}[D_i|X_i]$ and $u_i = \epsilon_i + \beta \mathbb{E}[D_i|X_i]$. We showed, in class, that $\mathbb{E}[u_i \tilde{D_i}] = 0$ under un-confounded-ness and homogeneous treatment, and can get a consistent estimate of $\beta$ if the CEF is known. While our CEF is not known, given we have linear CEF with a saturated model, we can simply include X's as additional control.
@@ -809,6 +810,8 @@ results_df = rbind(results_df,
                               att = NA,
                               number_vars = NA))
 ```
+
+Comparing the exact matching estimate of -215.5 to saturated regression estimate of -217.6, we see that our estimates are very similar.
 
 
 ## Part (e)
