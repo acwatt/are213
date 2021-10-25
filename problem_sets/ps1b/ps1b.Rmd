@@ -701,7 +701,7 @@ results_df = rbind(results_df,
 ```{r Problem 5b table, results='asis', eval=F}
 stargazer(reg_5a,
           type = 'latex',
-          keep = "tobacco1(?!:)",
+          keep = "tobacco1",
           perl=TRUE, header = FALSE, table.placement = '!h',
           title = "Saturated Regression", 
           align = TRUE, no.space = TRUE, font.size = "small",
