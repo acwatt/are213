@@ -593,7 +593,7 @@ results_df = rbind(results_df,
                               number_vars = NA))
 ```
 
-First, for each group of smokers and nonsmokers, we see that the range of estimated propensity score is (`r round(as.numeric(minmax[1,3]), 3)`, `r round(as.numeric(minmax[1,2]), 4)`) for nonsmokers and (`r round(as.numeric(minmax[2,3]), 4)`, `r round(as.numeric(minmax[2,2]), 4)`) for smokers. The range is very similar, meaning overlap assumption is satisfied, and trimming for blocking is not needed. This also ensures that what we have done above, which is creating 100 equal bins between the minimum and maximum propensity score for each group, will be very similar to creating the same 100 bins for the two groups such that first bin is [0, 0.01] and so on.
+First, for each group of smokers and nonsmokers, we see that the range of estimated propensity score is (`r round(as.numeric(minmax[1,3]), 3)`, `r round(as.numeric(minmax[1,2]), 4)`) for nonsmokers and (`r round(as.numeric(minmax[2,3]), 4)`, `r round(as.numeric(minmax[2,2]), 4)`) for smokers. The range is very similar, meaning overlap assumption is satisfied, and trimming for blocking is not needed.
 
 Using the blocking estimator, we find a smoking treatment effect of `r round(t_3,3)`
 
