@@ -513,7 +513,7 @@ If we don't have good covariate overlap, however, we may have very few observati
 
 Since our weights are $1/p(X)$ for treated observations, the weights for the rare treatment observations with p-scores near 0 can be extremely large and thus we might be relying on relatively few observations to estimate the treatment effect. Similarly, the weights are $1/(1-p(X))$ for control observations and we could be heavily weighting few observations with p-scores near 1. 
 
-
+The benefit of weighting by propensity score is that it compares similar observations to one another puts more weight on those that look like treated observations. This is fantastic in circumstances where the control and treated share significant overlap on matching variables. However, if there is not significant overlap on the matching variables between treated and untreated observations, then weird outlier untreated observations--for better or for worse--are given extremely heavy weight. If we trust the outlier untreated observations, this may be reasonable, however the fact that they are outliers among the untreated is also a worrying sign such outliers may be unrepresentative as counterfactual controls.
 
 ## Part (g)
 
@@ -841,6 +841,14 @@ Furthermore, we have assumed CIA holds, that conditioning on X's, materal tobacc
 ## Part (c)
 **Develop a weighted version of the exact matching estimator that estimates the same thing as the regression above (regardless of whether the treatment effect is independent of covariates).**
 
+```{r Problem 5d}
+
+#Match on covariates
+match_on <- c("rectype", "pldel3", "cntocpop", 
+              "stresfip", "dmage", "mrace3", "dmar", "adequacy", "csex", "dplural")
+
+
+```
 
 
 
@@ -848,6 +856,25 @@ Furthermore, we have assumed CIA holds, that conditioning on X's, materal tobacc
 **Estimate the weighted matching estimator you propose. Compare it to the regression estimate from part (b). Are they similar?**
 
 ```{r Problem 5d}
+count <- df5a %>% 
+            count(tobacco, uniq) %>% 
+            arrange(uniq, tobacco) %>% 
+            reshape(idvar = "uniq", timevar = "tobacco", direction = "wide") %>%
+            mutate(bin_w_trt_cont = ifelse(is.na(n.1) |is.na(n.2), NA, 1)) %>%
+            rename(tobacco_2 = n.2, tobacco_1 = n.1) %>%
+            gather(tobacco_val, count, -c("uniq", "bin_w_trt_cont")) %>%
+            mutate(tobacco = as.factor(ifelse(tobacco_val == "tobacco_1", 1, 2))) %>%
+            select(uniq, tobacco, count, bin_w_trt_cont, -tobacco_val) %>%
+            arrange(uniq, tobacco)
+
+head(count, n=30)
+
+            
+df5c <- full_join(df5a, count, by = c("tobacco", "uniq")) %>% 
+          mutate(weight_control_cell = NA, weight_control_cell = ifelse(tobacco = 1, 1/n, NA), 
+                 wijyj = weight_control_cell*dbrwt)
+
+
 
 ```
 
@@ -855,6 +882,7 @@ Furthermore, we have assumed CIA holds, that conditioning on X's, materal tobacc
 ## Part (e)
 **Is the sample size of your regression the same as the sample size of your matching estimator, or does the regression have more observations? If the regression has more observations, why don’t these extra observations influence the treatment effect estimate?**
 
+The regression has more observations. However, these do not influence the treatment effect estimate because treated and untreated observations without any untreated or treated match (respectively) are given a weight of zero.
 
 
 ## Part (f)
