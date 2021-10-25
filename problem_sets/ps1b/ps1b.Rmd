@@ -475,6 +475,7 @@ density_fun(3000, filter(df2d, tobacco==2), 2*h2) / norm_cons1
 **Take one of your densities and display an estimate of the density using different bandwidths as well as the one you settled on. What happens with bigger (smaller) bandwidths?**
 
 Smokers' density with bandwidth = 1/2 * Stata bandwidth
+
 ```{r Problem 2e 0.5, echo=F}
 dens1_custom = sapply(x_vec, density_fun, df=filter(df2d, tobacco==1), h=0.5*h1)
 norm_cons1 = sum(diff(x_vec) * zoo::rollmean(dens1_custom, 2))
@@ -484,6 +485,7 @@ ggplot(dens_df, aes(x = birthweight, y = f)) +
 ```
 
 Smokers' density with bandwidth = 1 Stata bandwidth
+
 ```{r Problem 2e 1, echo=F}
 dens1_custom = sapply(x_vec, density_fun, df=filter(df2d, tobacco==1), h=h1)
 norm_cons1 = sum(diff(x_vec) * zoo::rollmean(dens1_custom, 2))
@@ -493,6 +495,7 @@ ggplot(dens_df, aes(x = birthweight, y = f)) +
 ```
 
 Smokers' density with bandwidth = 2 Stata bandwidth
+
 ```{r Problem 2e 2, echo=F}
 dens1_custom = sapply(x_vec, density_fun, df=filter(df2d, tobacco==1), h=2*h1)
 norm_cons1 = sum(diff(x_vec) * zoo::rollmean(dens1_custom, 2))
@@ -511,20 +514,31 @@ Weighting on the propensity score, we can reduce the dimensionality of the covar
 
 If we don't have good covariate overlap, however, we may have very few observations that are matched to the opposite treatment group. We expect the majority of the control observations to have a low propensity score (since it's estimating the probability of treatment based on covariates) and the majority of treatment observations to have high propensity scores. Without good covariate overlap, we would expect very few treatment observations to have very low p-scores (near 0) and very few control observations to have high p-scores (near 1).
 
-Since our weights are $1/p(X)$ for treated observations, the weights for the rare treatment observations with p-scores near 0 can be extremely large and thus we might be relying on relatively few observations to estimate the treatment effect. Similarly, the weights are $1/(1-p(X))$ for control observations and we could be heavily weighting few observations with p-scores near 1. 
+Since our weights are $1/p(X)$ for treated observations, the weights for the rare treatment observations with p-scores near 0 can be extremely large and thus we might be relying on relatively few observations to estimate the treatment effect. Similarly, the weights are $1/(1-p(X))$ for control observations and we could be heavily weighting few observations with p-scores near 1.  If we trust the outlier untreated observations, this may be reasonable, however the fact that they are outliers among the untreated is also a worrying sign such outliers may be unrepresentative as counterfactual controls.
 
-The benefit of weighting by propensity score is that it compares similar observations to one another puts more weight on those that look like treated observations. This is fantastic in circumstances where the control and treated share significant overlap on matching variables. However, if there is not significant overlap on the matching variables between treated and untreated observations, then weird outlier untreated observations--for better or for worse--are given extremely heavy weight. If we trust the outlier untreated observations, this may be reasonable, however the fact that they are outliers among the untreated is also a worrying sign such outliers may be unrepresentative as counterfactual controls.
 
 ## Part (g)
 
 **Present your findings and interpret the results on the relationship between birthweight and smoking. For the estimates in parts (b) and (c), consider which of the following conditions must hold in order for that estimate to be valid:**
 
-- The treatment effect heterogeneity is linear in the propensity score.
-- The treatment effect heterogeneity is not linear in the propensity score.
-- The decision to smoke is completely randomly assigned.
-- Conditional on the exogenous variables the decision to smoke is randomly assigned.
+(i) The treatment effect heterogeneity is linear in the propensity score.
+(ii) The treatment effect heterogeneity is not linear in the propensity score.
+(iii) The decision to smoke is completely randomly assigned.
+(iv) Conditional on the exogenous variables the decision to smoke is randomly assigned.
 
+For part (b) where we estimate the ATE using a regression on the treatment and the pscore, we estimate an effect of `r round(ATE_2bb,1)` -- that is, on average, we expect that smoking during pregnancy decreases the birthweight of the child by `r round(abs(ATE_2bb),1)` grams for the general population (assuming our sample is representative of the general population). This requires that condition (iv) holds, and additionally, that the treatment effect is homogeneous since we are regressing on just the treatment indicator and the pscore.
 
+For part (c), we use the pscore to weight the observations to create balanced set of covariates and estimate the average treatment effect to be `r round(ATE2c,1)` -- on average, we expect that smoking during pregnancy decreases the birthweight of the child by `r round(abs(ATE2c),1)` grams for the general population. We also estimate the average effect on the treated to be `r round(ATT2c,1)` -- on average for women that smoke, we expect that smoking during pregnancy decreases the birthweight of the child by `r round(abs(ATE2c),1)` grams. These results both require conditions (i) and (iv) to be valid.
+
+We can assess the homogeneous treatment effect assumption by comparing the shape of the counterfactual distributions. Below, we have shifted the smokers' distribution up by the ATE estimated in part (c). We can see that the distributions are extremely close, giving evidence that the treatment effect is fairly homogenous in across the pscore values.
+
+```{r Problem 2g}
+dens_df2 = dens_df %>%
+  mutate(birthweight = ifelse(smoker=='yes', birthweight - ATE2c, birthweight))
+
+ggplot(dens_df2, aes(x = birthweight, y = f)) +
+  geom_polygon(aes(fill=smoker), alpha = 0.4, color='black', size=0.3)
+```
 
 
 
@@ -693,7 +707,7 @@ for (var in make_dummy) {
 
 ```{r Problem 5a Contending Version, eval=F}
 # Select variables (Error: cannot allocate vector of size 2616.7 Gb)
-#df5a = df %>% 
+#df5a = df %>%
 #          select(dbrwt, rectype, pldel3, cntocpop, stresfip, 
 #                 dmage, mrace3, dmar, adequacy, csex, dplural) %>% 
 #          mutate(stresfip = as.factor(stresfip), dmage = as.factor(dmage))
@@ -841,7 +855,7 @@ Furthermore, we have assumed CIA holds, that conditioning on X's, materal tobacc
 ## Part (c)
 **Develop a weighted version of the exact matching estimator that estimates the same thing as the regression above (regardless of whether the treatment effect is independent of covariates).**
 
-```{r Problem 5d}
+```{r Problem 5c}
 
 #Match on covariates
 match_on <- c("rectype", "pldel3", "cntocpop", 
@@ -855,7 +869,7 @@ match_on <- c("rectype", "pldel3", "cntocpop",
 ## Part (d)
 **Estimate the weighted matching estimator you propose. Compare it to the regression estimate from part (b). Are they similar?**
 
-```{r Problem 5d}
+```{r Problem 5d, eval=F}
 count <- df5a %>% 
             count(tobacco, uniq) %>% 
             arrange(uniq, tobacco) %>% 
