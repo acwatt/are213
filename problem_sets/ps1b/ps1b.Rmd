@@ -874,7 +874,7 @@ df5c <- full_join(df5a, count, by = c("tobacco", "uniq")) %>%
 ## Part (e)
 **Is the sample size of your regression the same as the sample size of your matching estimator, or does the regression have more observations? If the regression has more observations, why don’t these extra observations influence the treatment effect estimate?**
 
-The regression has more observations. However, these do not influence the treatment effect estimate because treated and untreated observations without any untreated or treated match (respectively) are given a weight of zero.
+The regression has more observations because it includes all the observation in the data while the matching estimator includes only those treated and untreated observations with a match in the untreated and treated group, respectively. However, this discrepancy do not influence the treatment effect estimate because treated and untreated observations without any untreated or treated match (respectively) are given a weight of zero.
 
 
 ## Part (f)
