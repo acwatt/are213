@@ -4,10 +4,12 @@ author: "S. Sung, H. Husain, T. Woolley, A. Watt"
 email: aaron@acwatt.net
 date: "2021-10-18"
 output:
-  html_document:
+  pdf_document:
     toc: true
     toc_depth: 2
-knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'ARE_213_PS1b.html')) })
+header-includes:
+   - \usepackage{dcolumn}
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'ARE_213_PS1b.pdf')) })
 ---
 
 ```{r setup, include=FALSE}
@@ -20,19 +22,21 @@ Purpose of script: run code necessary for ps1b for ARE 213
 Notes: Need to ps1b.R from os1b folder (without Rstudio being started first)
        if Rstudio is already started, the working directory will not be set
        to the ps1b/ folder
+       
+       \usepackage{dcolumn}: dcolumn is needed in latex compilation 
 -->
 
 ```{r Settings, echo=FALSE}
 # stargazer table type (html, latex, or text)
 # Change to latex when outputting to PDF, html when outputting to html
-table_type = "html"
+table_type = "latex"
 ```
 
 
 
 
-# Packages
-```{r packages, results='hide', message=FALSE}
+# Packages (omitted)
+```{r packages, results='hide', message=FALSE, echo=F}
 # install.packages("pacman")
 # install.packages("tidyverse")
 # install.packages("plm")
@@ -54,7 +58,7 @@ library(Hmisc)
 ```
 
 # Data cleaning from PS 1a
-```{r data_cleaning}
+```{r data_cleaning, results='hide'}
 data = read.dta('ps1.dta')
 missing_codes = read.csv('missing_codes.csv')
 mvars = as.character(missing_codes$varname)
@@ -133,19 +137,17 @@ names(reg_1b_fmaps$coefficients) <- gsub("xx","",names(reg_1b_fmaps$coefficients
 names(reg_1b_omaps$coefficients) <- gsub("xx","",names(reg_1b_omaps$coefficients))
 ```
 
-```{r 1B table abbreviated, results='asis'}
+
+```{r 1B table abbreviated, results='asis', eval=T}
 stargazer(reg_1b_dbrwt, reg_1b_fmaps, reg_1b_omaps,
           type = 'latex',
-          omit=":",
+          keep = "tobacco1(?!:)",
+          perl=TRUE,
           title = "Series Regressions", 
           align = TRUE, no.space = TRUE, font.size = "small",
-          notes = "For brevity, only the original variables are presented;
-                   300+ second order / interaction terms are not shown.")
-```
-
-
-```
-A table enviroment cannot be broken across pages. Delete \begin{table}\centering and \end{table}, replace tabular with longtable, move \caption and label to immediately after \begin{longtable}{..}. And add \usepackage{longtable} to the preamble.
+          table.placement = "!h", header = FALSE,
+          notes = c("For brevity, only the original variables are presented;",
+                    "300+ second order / interaction terms are not shown."))
 ```
 
 
@@ -191,7 +193,7 @@ In both graphs, each curve corresponds to a variable. They show the path of its
   model selection.
 
 Here are the non-zero coefficients:
-```{r 1C table, results='asis'}
+```{r 1C table, results='asis', echo=F}
 knitr::kable(reg_1c$beta[, i][reg_1c$beta[, i] != 0], 
              caption=paste0("Lasso Regression for top ", num_vars, " vars (lambda = ", lambda, ")"),
              col.names = 'Non-zero Coefficients', align = "l", digits = 3)
@@ -208,37 +210,26 @@ knitr::kable(reg_1c$beta[, i][reg_1c$beta[, i] != 0],
 ## Part (a)
 
 **First create the propensity score. For our purposes let’s use a logit specification. First specify the logit using all of the “predetermined” covariates (don’t include interactions). Next, include only those “predetermined” covariates that enter significantly in the first logit specification. How comparable are the propensity scores? If they are similar does this imply that we have the “correct” set of covariates in the logit specification used for our propensity score?**
-```{r 2a1}
+```{r 2a1 regression}
 # create the propensity score using logit
 # using all of the “predetermined” covariates
 df2a = df %>% select(tobacco, csex, mrace3, preterm,
                      dmage, dfage, dmeduc, dfeduc, ormoth, orfath,
                      disllb, dtotord, dmar, adequacy, nprevist)
-reg_2a1 <- glm(tobacco ~ ., data = df2a, family = "binomial")
-```
-
-```{r 2a1 table, results='asis'}
-stargazer(reg_2a1, title="First logit regression", header=FALSE, single.row=TRUE, type=table_type)
-```
-
-Removing sex of the child (`csex`) and prenatal adequacy (`adequacy`) from regressors (not significant).
-
-```{r 2a2}
-# Try logit with only the significant covariates
+reg_2a1 <- glm(tobacco ~ ., data = df2a, family = "binomial")# Try logit with only the significant covariates
 df2a2 = df2a %>% select(-csex, -adequacy)
 reg_2a2 <- glm(tobacco ~ ., data = df2a2, family = "binomial")
 ```
 
-```{r 2a2 table, results='asis'}
-stargazer(reg_2a2, title="Second logit regression", header=FALSE, single.row=TRUE, type=table_type)
+Model (1) is the Logit regression Removing sex of the child (csex) and prenatal adequacy (adequacy) from regressors (not significant).
+```{r 2a1 table, results='asis'}
+stargazer(reg_2a1, reg_2a2, title="Logit regressions", header=FALSE, single.row=TRUE, type=table_type)
 ```
 
-```{r Showing p-scores with actual data values HH}
+```{r pscore histograms}
 p1_df <- data.frame(p1_score = predict(reg_2a1, type = "response"), tobacco = reg_2a1$model$tobacco)
 p2_df <- data.frame(p2_score = predict(reg_2a2, type = "response"), tobacco = reg_2a2$model$tobacco)
-```
 
-```{r Histograms HH}
 labs <- paste("Actual smoking status:", c("Yes", "No"))
 p1_df %>%
   mutate(tobacco = ifelse(tobacco == 1, labs[1], labs[2])) %>%
@@ -266,14 +257,14 @@ p2 = reg_2a2 %>% predict(df2a2, type = "response")
 The histogram of the first predicted p-score is in orange, the second is in purple.
 So this fully-pink histogram is meant to show that there is nearly complete
 overlap in this histograms of the predicted p-scores.
-```{r}
+```{r 2a histogram overlap}
 plot(hist(p1, plot=F), col=rgb(0,0,1,1/4), border=NA, xlim=c(0,1))  # first histogram
 plot(hist(p2, plot=F), col=rgb(1,0,0,1/4), border=NA, xlim=c(0,1), add=T)  # second
 ```
 
 We can see where the differences are that are more than 0.001 and the shape of the 
 differences.
-```{r}
+```{r 2a histogram differences}
 threshold = 0.001
 pdiff = p1-p2
 plot(hist(p1[abs(pdiff) > threshold], plot=F), col=rgb(0,0,1,1/4), border=NA, xlim=c(0,1),
@@ -283,7 +274,7 @@ plot(hist(pdiff, plot=F), col=rgb(0,0,1,1/4), border=NA, main='Histogram of diff
 
 Here's two density plots to reinforce the idea. The blue line is the density plot
 for the first p-score and the red filling is the density plot for the second.
-```{r}
+```{r 2c density plots}
 plot(density(p1), col=rgb(0,0,1), xlim=c(0,1), lwd=3,
      main='Comparing p-score densities with and without significant variables')  # first kernel
 polygon(density(p2), col="red", border=NA, xlim=c(0,1))  # second kernel filled in
@@ -298,7 +289,7 @@ Overall, the propensity scores are very similar. However, this does not imply th
 **Control directly for the estimated propensity scores using a regression analysis, and estimate an average treatment effect. State clearly the assumptions under which your estimate is correct.**
 
 
-```{r}
+```{r Problem 2b}
 # Control for p-score in regression analysis
 df2b = df %>%
   select(dbrwt, tobacco, csex, mrace3, preterm,
@@ -306,7 +297,7 @@ df2b = df %>%
          disllb, dtotord, dmar, adequacy, nprevist) %>%
   mutate(pscore = p1)
 reg_2b = lm(dbrwt ~ ., data=df2b)
-summary(reg_2b)
+
 # Estimate ATE
 ATE_2b = reg_2b$coefficients["tobacco1"]
 
@@ -329,7 +320,7 @@ Imbens tells us that, after dividing by the sum of the weights in each treatment
    {\sum\limits_{i=1}^N\dfrac{1-D_i}{1-\hat p(X_i)}}
 \]
 
-```{r}
+```{r Problem 2c ATE}
 # Reweight data using p-score to weight
 df2c = df2b %>% 
   mutate(pscore = predict(reg_2a1, ., type = "response")) %>%
@@ -355,7 +346,7 @@ Imbens (2004) in a review article states that the efficient TOT estimator of $\t
    \frac{\sum\limits_{i=1}^N\dfrac{(1-D_i)\hat p(X_i)Y_i}{1-\hat p(X_i)}}
    {\sum\limits_{i=1}^N\dfrac{(1-D_i)\hat p(X_i)}{1-\hat p(X_i)}}
 \]
-```{r}
+```{r Problem 2c ATT}
 # Reweight data for ATT
 df2c = df2c %>% 
   mutate(weight2 = ifelse(tobacco == 1, 1, pscore/(1-pscore)))
@@ -394,7 +385,7 @@ We can use weighted kernel density estimation with the weights above:
 # Play around with a bandwidth starting with half the default Stata bandwidth
 # For stata bandwidht, see rkdensity.pdf page 9 in this ps1b github folder.
 # You can also run on stata with no bandwidth specified, then print the
-# default bandwidth used using `display r(bwidth)`
+# default bandwidth used using -display r(bwidth)-
 # Choose the same bandwidth for all the pictures
 
 # Stata default bandwidth
@@ -467,8 +458,8 @@ density_fun(3000, filter(df2d, tobacco==2), 2*h2) / norm_cons1
 ## Part (e)
 **Take one of your densities and display an estimate of the density using different bandwidths as well as the one you settled on. What happens with bigger (smaller) bandwidths?**
 
-Smokers' density with bandwidth = 1/2 * Stata bandwidht
-```{r Problem 2e 0.5_1, echo=False}
+Smokers' density with bandwidth = 1/2 * Stata bandwidth
+```{r Problem 2e 0.5, echo=F}
 dens1_custom = sapply(x_vec, density_fun, df=filter(df2d, tobacco==1), h=0.5*h1)
 norm_cons1 = sum(diff(x_vec) * zoo::rollmean(dens1_custom, 2))
 dens_df = data.frame(birthweight=x_vec, f=(dens1_custom / norm_cons1), smoker="yes")
@@ -476,8 +467,8 @@ ggplot(dens_df, aes(x = birthweight, y = f)) +
   geom_polygon(aes(fill=smoker, group = smoker), alpha = 0.5)
 ```
 
-Smokers' density with bandwidth = 1 Stata bandwidht
-```{r Problem 2e 0.5_2, echo=False}
+Smokers' density with bandwidth = 1 Stata bandwidth
+```{r Problem 2e 1, echo=F}
 dens1_custom = sapply(x_vec, density_fun, df=filter(df2d, tobacco==1), h=h1)
 norm_cons1 = sum(diff(x_vec) * zoo::rollmean(dens1_custom, 2))
 dens_df = data.frame(birthweight=x_vec, f=(dens1_custom / norm_cons1), smoker="yes")
@@ -485,8 +476,8 @@ ggplot(dens_df, aes(x = birthweight, y = f)) +
   geom_polygon(aes(fill=smoker, group = smoker), alpha = 0.5)
 ```
 
-Smokers' density with bandwidth = 2 Stata bandwidht
-```{r Problem 2e 0.5_3, echo=False}
+Smokers' density with bandwidth = 2 Stata bandwidth
+```{r Problem 2e 2, echo=F}
 dens1_custom = sapply(x_vec, density_fun, df=filter(df2d, tobacco==1), h=2*h1)
 norm_cons1 = sum(diff(x_vec) * zoo::rollmean(dens1_custom, 2))
 dens_df = data.frame(birthweight=x_vec, f=(dens1_custom / norm_cons1), smoker="yes")
