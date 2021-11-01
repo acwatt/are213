@@ -84,8 +84,7 @@ data <- Hmisc::upData(data, labels = variable_labels)
 
 # Dataframe with missing dropped
 
-df = data[complete.cases(data), ] %>%
-  sample_n(10000)
+df = data[complete.cases(data), ]
 # Treatment reference level
 df$tobacco <- relevel(df$tobacco, ref = "2")  # reference level: 2 = no for tobacco use during pregnancy
 ```
@@ -697,7 +696,7 @@ results_df = rbind(results_df,
                    data.frame(type = 'Saturated regression',
                               ate = ATE5b,
                               att = NA,
-                              number_vars = length(levels(df5b$uniq)) + 2))
+                              number_vars = length(levels(df5a$uniq)) + 2))
 ```
 
 
@@ -809,6 +808,7 @@ results_df = rbind(results_df,
                               ate = ATE5d,
                               att = NA,
                               number_vars = NA))
+ATE5d
 ```
 
 Comparing the exact matching estimate of -215.5 to saturated regression estimate of -217.6, we see that our estimates are very similar.
@@ -834,6 +834,7 @@ The regression has more observations because it includes all the observation in 
 ===============================================================================
 =============================================================================== 
 -->
+\newpage
 # Problem 6
 **Concisely and coherently summarize your overall results, providing some intuition. Write it like you would the conclusion of a paper. In this summary, describe whether you think your best estimate of the effects of smoking is credibly identified. State why or why not.**
 
@@ -842,12 +843,12 @@ In conclusion, the treatment effect of mother's smoking habits on baby birthweig
 Each of these methods compares treated and untreated observations based on similar characteristics. In the case of propensity score matching, observations are weighted by their likelihood of being treated, giving more weight to untreated observations that by all other measures look like treated observations. In the case of exact matching, treated observations are paired with untreated observations based on relevant characteristics and their differences are computed. For these reasons, we believe the true effect of smoking on baby birthweight to be around -220.
 
 
-```{r Problem 6 table, results='asis'}
+```{r Problem 6 table, results='asis', echo=F}
 knitr::kable(results_df, 
              caption="Treatment Effect Estimates by Method",
              col.names = c('Method Type', 'ATE (grams)', 'ATT (grams)', 'Number of variables'),
              align = "l", digits = 3,
-             format = "latex")
+             format = "latex", row.names = F)
 ```
 
 
