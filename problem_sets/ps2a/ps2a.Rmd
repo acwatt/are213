@@ -68,6 +68,8 @@ y_{it} = \alpha + x_{it}\beta + c_i + u_{it}
 \def\sumi{\sum\limits_i}
 \def\sumt{\sum\limits_t}
 \def\sumit{\sumi\sumt}
+\def\lp{\left(}
+\def\rp{\right)}
 
 **Let $\bfe$ and $\bfd$ represent the fixed effects and first
 differences estimators respectively.**
@@ -115,12 +117,47 @@ So $\bfe$ and $\bfd$ are numerically identical.
 
 \newpage
 ## Part (b)
-**Show that the standard errors of $\bfe$E and $\bfd$ are numerically identical.
+**Show that the standard errors of $\bfe$ and $\bfd$ are numerically identical.
 If you wish, you may assume that $x_{it}$ is a scalar (i.e. there is only one
 regressor) and ignore any degree of freedom corrections. You are not clustering
 the standard errors in this problem.**
 
+\def\sufe{\hat\sigma_{u,FE}^2}
+\def\sufd{\hat\sigma_{u,FD}^2}
+\def\dui{\widehat{\Delta u}_i}
+\def\uuit{\widehat{\ddot u}_{it}}
+\def\bhat{\hat\beta}
 
+\begin{align*}
+\intertext{The standard errors are estimates of the square root of the asymptotic variances of our estimators, so WLOG, we can compare the asymptotic variances. The asymptotic variances of our estimators are}
+\widehat{Avar(\bfe)} &= \sufe \left(\ddot X'\ddot X\right)^{-1}
+    \qquad\text{and}\qquad 
+    \widehat{Avar(\bfe)} = \sufd \left(\Delta X'\Delta X\right)^{-1}
+\intertext{where $\sufe$ and $\sufd$ are estimated from the residuals of the corresponding regressions and using the correct degrees of freedom:}
+\sufe &= \frac{\sumit\uuit^2}{N(T-1)-K} = \frac{\sumit\uuit^2}{N-K}
+    \qquad\text{and}\qquad
+    \sufd = \frac{\sumi\dui^2}{N(T-1)-K} = \frac{\sumi\dui^2}{N-K}
+\intertext{Let $\bhat:=\bfd=\bfe$. Then, from part (a), we can find the relationship between $\dui$ and $\uuit$:}
+\uuit^2 &= (\uyit - \uxit\bhat)^2 \\
+    &= \lp(-1)^t \lp\frac{1}{2}\dyi - \frac{1}{2}\dxi\bhat \rp\rp^2 \\
+    &= \frac{1}{4}\lp \dyi - \dxi\bhat \rp ^2 \\
+    &= \frac{1}{4}\dui^2
+\intertext{So the estimated error variances are related by}
+\sufe &= \frac{\sumit\uuit^2}{N-K} \\
+    &= \frac{\sumit\frac{1}{4}\dui^2}{N-K} \\
+    &= \frac{\sumi\frac{1}{2}\dui^2}{N-K} \\
+    &= \frac{1}{2}\frac{\sumi\dui^2}{N-K} \\
+    &= \frac{1}{2}\sufd \\
+\intertext{We know from part (a) that}
+\lp\sumit\uxit'\uxit\rp^{-1} &= \lp\frac{1}{2}\sumi\dxi'\dxi\rp^{-1} \\
+    &= 2\lp \sumi\dxi'\dxi \rp^{-1}
+\intertext{And putting all these together, we have}
+\widehat{Avar(\bfe)} &= \sufe \lp \ddot X'\ddot X \rp^{-1} \\
+    &= \frac{1}{2}\sufd 2\lp \sumi\dxi'\dxi \rp^{-1} \\
+    &= \sufd \lp \sumi\dxi'\dxi \rp^{-1} \\
+    &= \widehat{Avar(\bfe)}
+\end{align*}
+Because the estimates of the asymptotic variances are equal, the standard errors (the square roots) will be equal.
 
 
 

@@ -263,10 +263,40 @@ y_{it} = \alpha + x_{it}\beta + c_i + u_{it}
     &amp;= \hat\beta_{FD}
 \end{align*}\]</span></p>
 <p>So <span class="math inline">\(\hat\beta_{FE}\)</span> and <span class="math inline">\(\hat\beta_{FD}\)</span> are numerically identical.</p>
+<div style="page-break-after: always;"></div>
 </div>
 <div id="part-b" class="section level2">
 <h2>Part (b)</h2>
-<p><strong>Show that the standard errors of <span class="math inline">\(\hat\beta_{FE}\)</span>E and <span class="math inline">\(\hat\beta_{FD}\)</span> are numerically identical. If you wish, you may assume that <span class="math inline">\(x_{it}\)</span> is a scalar (i.e. there is only one regressor) and ignore any degree of freedom corrections. You are not clustering the standard errors in this problem.</strong></p>
+<p><strong>Show that the standard errors of <span class="math inline">\(\hat\beta_{FE}\)</span> and <span class="math inline">\(\hat\beta_{FD}\)</span> are numerically identical. If you wish, you may assume that <span class="math inline">\(x_{it}\)</span> is a scalar (i.e. there is only one regressor) and ignore any degree of freedom corrections. You are not clustering the standard errors in this problem.</strong></p>
+<p><span class="math display">\[\begin{align*}
+\intertext{The standard errors are estimates of the square root of the asymptotic variances of our estimators, so WLOG, we can compare the asymptotic variances. The asymptotic variances of our estimators are}
+\widehat{Avar(\hat\beta_{FE})} &amp;= \hat\sigma_{u,FE}^2\left(\ddot X&#39;\ddot X\right)^{-1}
+    \qquad\text{and}\qquad 
+    \widehat{Avar(\hat\beta_{FE})} = \hat\sigma_{u,FD}^2\left(\Delta X&#39;\Delta X\right)^{-1}
+\intertext{where $\hat\sigma_{u,FE}^2$ and $\hat\sigma_{u,FD}^2$ are estimated from the residuals of the corresponding regressions and using the correct degrees of freedom:}
+\hat\sigma_{u,FE}^2&amp;= \frac{\sum\limits_i\sum\limits_t\widehat{\ddot u}_{it}^2}{N(T-1)-K} = \frac{\sum\limits_i\sum\limits_t\widehat{\ddot u}_{it}^2}{N-K}
+    \qquad\text{and}\qquad
+    \hat\sigma_{u,FD}^2= \frac{\sum\limits_i\widehat{\Delta u}_i^2}{N(T-1)-K} = \frac{\sum\limits_i\widehat{\Delta u}_i^2}{N-K}
+\intertext{Let $\hat\beta:=\hat\beta_{FD}=\hat\beta_{FE}$. Then, from part (a), we can find the relationship between $\widehat{\Delta u}_i$ and $\widehat{\ddot u}_{it}$:}
+\widehat{\ddot u}_{it}^2 &amp;= (\ddot y_{it}- \ddot X_{it}\hat\beta)^2 \\
+    &amp;= \lp(-1)^t \lp\frac{1}{2}\Delta y_i- \frac{1}{2}\Delta X_i\hat\beta\rp\rp^2 \\
+    &amp;= \frac{1}{4}\lp \Delta y_i- \Delta X_i\hat\beta\rp ^2 \\
+    &amp;= \frac{1}{4}\widehat{\Delta u}_i^2
+\intertext{So the estimated error variances are related by}
+\hat\sigma_{u,FE}^2&amp;= \frac{\sum\limits_i\sum\limits_t\widehat{\ddot u}_{it}^2}{N-K} \\
+    &amp;= \frac{\sum\limits_i\sum\limits_t\frac{1}{4}\widehat{\Delta u}_i^2}{N-K} \\
+    &amp;= \frac{\sum\limits_i\frac{1}{2}\widehat{\Delta u}_i^2}{N-K} \\
+    &amp;= \frac{1}{2}\frac{\sum\limits_i\widehat{\Delta u}_i^2}{N-K} \\
+    &amp;= \frac{1}{2}\hat\sigma_{u,FD}^2\\
+\intertext{We know from part (a) that}
+\lp\sum\limits_i\sum\limits_t\ddot X_{it}&#39;\ddot X_{it}\rp^{-1} &amp;= \lp\frac{1}{2}\sum\limits_i\Delta X_i&#39;\Delta X_i\rp^{-1} \\
+    &amp;= 2\lp \sum\limits_i\Delta X_i&#39;\Delta X_i\rp^{-1}
+\intertext{And putting all these together, we have}
+\widehat{Avar(\hat\beta_{FE})} &amp;= \hat\sigma_{u,FE}^2\lp \ddot X&#39;\ddot X \rp^{-1} \\
+    &amp;= \frac{1}{2}\hat\sigma_{u,FD}^22\lp \sum\limits_i\Delta X_i&#39;\Delta X_i\rp^{-1} \\
+    &amp;= \hat\sigma_{u,FD}^2\lp \sum\limits_i\Delta X_i&#39;\Delta X_i\rp^{-1} \\
+    &amp;= \widehat{Avar(\hat\beta_{FE})}
+\end{align*}\]</span> Because the estimates of the asymptotic variances are equal, the standard errors (the square roots) will be equal.</p>
 <div style="page-break-after: always;"></div>
 <!--=========================================================================-->
 </div>
