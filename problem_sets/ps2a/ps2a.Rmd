@@ -1,0 +1,270 @@
+---
+title: "ARE 213 PS 2a"
+author: "S. Sung, H. Husain, T. Woolley, A. Watt"
+email: aaron@acwatt.net
+date: "2021-11-08"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 2
+header-includes:
+   - \usepackage{dcolumn}
+   - \usepackage{amsmath}
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'ARE_213_PS2a.pdf')) })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+<!--
+R version 3.6.3 (2020-02-29)
+Purpose of script: run code necessary for ps2a for ARE 213
+
+Notes: Need to ps2a.R from ps2a folder (without Rstudio being started first)
+       if Rstudio is already started, the working directory will not be set
+       to the ps2a/ folder
+       
+       \usepackage{dcolumn}: dcolumn is needed in latex compilation 
+-->
+
+```{r Settings, echo=FALSE}
+# stargazer table type (html, latex, or text)
+# Change to latex when outputting to PDF, html when outputting to html
+table_type = "text"
+```
+
+
+
+
+# Packages
+```{r packages, results='hide', message=FALSE, echo=T}
+library(tidyverse)
+library(foreign)
+library(stargazer)
+```
+
+
+
+\newpage
+<!--=========================================================================-->
+# Problem 1
+<!--=========================================================================-->
+**Question 10.3 from Wooldridge: For $T = 2$ consider the standard unobserved
+effects model:**
+
+\begin{equation}
+y_{it} = \alpha + x_{it}\beta + c_i + u_{it}
+\label{eq:1}
+\end{equation}
+
+\def\bfe{\hat\beta_{FE}}
+\def\bfd{\hat\beta_{FD}}
+\def\dxit{\Delta X_{it}}
+\def\dxi{\Delta X_i}
+\def\uxit{\ddot X_{it}}
+\def\dyit{\Delta y_{it}}
+\def\dyi{\Delta y_i}
+\def\uyit{\ddot y_{it}}
+\def\sumi{\sum\limits_i}
+\def\sumt{\sum\limits_t}
+\def\sumit{\sumi\sumt}
+
+**Let $\bfe$ and $\bfd$ represent the fixed effects and first
+differences estimators respectively.**
+
+## Part (a)
+**Show that $\bfe$ and $\bfd$ are numerically identical. Hint: it may
+be easier to write $\bfe$ as the “within estimator” rather than the
+fixed effects estimator.**
+
+\begin{align*}
+\intertext{Writing $\bfe$ as the within estimator, $\bfe$ and $\bfd$ are given by}
+\bfd &= \left(\Delta X'\Delta X\right)^{-1}\left(\Delta X'\Delta y\right) 
+\qquad\text{and}\qquad 
+\bfe = \left(\ddot X'\ddot X\right)^{-1}\left(\ddot X'\ddot y\right)\\
+\intertext{Expanding the inner products, we have}
+\bfd &= \left(\sumit\dxit'\dxit\right)^{-1}\left(\sumit\dxit'\dyit\right)
+\intertext{and} 
+\bfe &= \left(\sumit\uxit'\uxit\right)^{-1}\left(\sumit\uxit'\uyit\right)\\
+\intertext{Since there are only two periods, $\bfd$ simplifies to}
+\bfd &= \left(\sumi\dxi'\dxi\right)^{-1}\left(\sumi\dxi'\dyi\right)  \\
+\intertext{where} \dxi &\equiv X_{i2} - X_{i1} 
+    \qquad\text{and}\qquad 
+     \dyi \equiv y_{i2} - y_{i1} \\
+\intertext{Now we note that}
+\ddot X_{i1} &= X_{it} - \frac{1}{2}(X_{i1}+X_{i2}) 
+    = \frac{1}{2}(X_{i1}-X_{i2}) = -\frac{1}{2}\dxi
+\intertext{and similiarly}
+\ddot X_{i2} &= \frac{1}{2}\dxi, \quad
+    \ddot y_{i1} = -\frac{1}{2}\dyi \quad
+    \ddot y_{i2} = \frac{1}{2}\dyi \\
+\intertext{Then, $\bfe$ becomes}
+\bfe &= \left(\sumit\uxit'\uxit\right)^{-1}\left(\sumit\uxit'\uyit\right)\\
+    &= \left(\sumi\frac{1}{4}\dxi'\dxi + \frac{1}{4}\dxi'\dxi \right)^{-1}
+    \left(\sumi\frac{1}{4}\dxi'\dyi + \frac{1}{4}\dxi'\dyi\right)\\
+    &= \left(\frac{1}{2}\sumi\dxi'\dxi\right)^{-1}
+    \left(\frac{1}{2}\sumi\dxi'\dyi\right)\\
+    &= \left(\sumi\dxi'\dxi\right)^{-1}
+    \left(\sumi\dxi'\dyi\right)\\
+    &= \bfd
+\end{align*}
+
+So $\bfe$ and $\bfd$ are numerically identical.
+
+
+
+\newpage
+## Part (b)
+**Show that the standard errors of $\bfe$E and $\bfd$ are numerically identical.
+If you wish, you may assume that $x_{it}$ is a scalar (i.e. there is only one
+regressor) and ignore any degree of freedom corrections. You are not clustering
+the standard errors in this problem.**
+
+
+
+
+
+
+
+\newpage
+<!--=========================================================================-->
+# Problem 2
+<!--=========================================================================-->
+**Question 21-3 from Cameron-Trivedi (enhanced): Consider the fixed
+effects, two-way error component panel data model:**
+
+\begin{equation}
+y_{it} = \alpha + x_{it}\beta + \mu_i + \lambda_t + \epsilon_{it}
+\label{eq:2}
+\end{equation}
+
+## Part (a)
+**Show that the fixed effects estimator of $\beta$ can be obtained by applying
+two within (one-way) transformations on this model. The first is the within
+transformation ignoring the time effects followed by the within transformation
+ignoring the individual effects. Assume the panel is balanced. (Hint: it may be
+easier to analyze the fixed effects regression using partitioned regression.)**
+
+
+
+
+## Part (b)
+**Show that the order of the transformations is unimportant. Give an intuitive
+explanation for why.**
+
+
+
+## Part (c)
+**Does your answer to part (a) change if the panel becomes unbalanced (i.e.,
+contains different numbers of observations for each individual $i$). Why or why not?**
+
+
+
+
+\newpage
+<!--=========================================================================-->
+# Problem 3
+<!--=========================================================================-->
+**We now begin with an actual analysis of the data. The goal here is to
+determine what effect, if any, primary belt laws have on the log of traffic
+fatalities per capita (we log the LHS variable because we believe the effect of
+safety belt laws should be proportional to the overall level of fatalities per
+capita).**
+
+
+```{r Load Data, results='hide', eval=F}
+data = read.dta('traffic_safety2.dta')
+```
+
+
+## Part (a)
+**Run pooled bivariate OLS. Interpret. Add year fixed effects. Interpret. Add
+all covariates that you believe are appropriate. Think carefully about which
+covariates should be log transformed and which should enter in levels. What
+happens when you add these covariates? Why?**
+
+
+
+
+## Part (b)
+**Ignore omitted variables bias issues for the moment. Do you think the standard
+errors from above are right? Compute the Huber-White heteroskedasticity robust
+standard errors (e.g., ", robust"). Do they change much? Compute the clustered
+standard errors that are robust to within-state correlation (e.g., ",
+cluster(state)"). Do this using both the "canned" command and manually using the
+formulas we learned in class. Do the standard errors change much? Are you
+surprised? Interpret.**
+
+
+
+## Part (c)
+**Compute the between estimator, both with and without covariates. Under what
+conditions will this give an unbiased estimate of the effect of primary seat
+belt laws on fatalities per capita? Do you believe those conditions are met? Are
+you concerned about the standard errors in this case?**
+
+
+
+## Part (d)
+**Compute the Random Effects estimator (including covariates). Under what
+conditions will this give an unbiased estimate of the effect of primary seat
+belt laws on fatalities per capita? What are its advantages or disadvantages as
+compared to pooled OLS?**
+
+
+
+## Part (e)
+**Do you think the standard errors from RE are right? Compute the clustered
+standard errors. Are they substantially different? If so, why? (i.e., what
+assumption(s) are being violated?)**
+
+
+
+## Part (f)
+**Compute the FE estimator using only primary and year fixed effects as the
+covariates. Compute the normal standard errors and the clustered standard
+errors. If they are different, why?**
+
+
+
+## Part (g)
+**Add the same range of covariates to the FE estimator that you did to the OLS
+estimator. Are the FE estimates more or less stable than the OLS estimates?
+Why?**
+
+
+
+## Part (h)
+**Estimate a first-differences estimator, a 5-year differences estimator, and a
+long differences estimator, including year fixed effects (when feasible) and the
+appropriate covariates in each case. Briefly describe the pattern that emerges
+from the three differencing estimates. Where does the FE estimate fall in this
+pattern? Are you surprised?**
+
+
+
+## Part (i)
+**Make the case that the first-differences estimate is superior to the 5-year or
+long differences estimates.**
+
+
+
+## Part (j)
+**Make the case that the 5-year or long differences estimates are superior to
+the first-differences estimate.**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
