@@ -94,7 +94,7 @@ fixed effects estimator.**
     \qquad\text{and}\qquad 
      \dyi \equiv y_{i2} - y_{i1} \\
 \intertext{Now we note that}
-\ddot X_{i1} &= X_{it} - \frac{1}{2}(X_{i1}+X_{i2}) 
+\ddot X_{i1} &= X_{i1} - \frac{1}{2}(X_{i1}+X_{i2}) 
     = \frac{1}{2}(X_{i1}-X_{i2}) = -\frac{1}{2}\dxi
 \intertext{and similiarly}
 \ddot X_{i2} &= \frac{1}{2}\dxi, \quad
@@ -182,12 +182,67 @@ transformation ignoring the time effects followed by the within transformation
 ignoring the individual effects. Assume the panel is balanced. (Hint: it may be
 easier to analyze the fixed effects regression using partitioned regression.)**
 
+\def\xddot{\ddot x_{it}}
+\def\yddot{\ddot y_{it}}
+\def\eddot{\ddot e_{it}}
 
+\def\xdddot{\dddot x_{it}}
+\def\ydddot{\dddot y_{it}}
+\def\edddot{\dddot e_{it}}
+
+\def\sumi{\sum\limits_i}
+\def\sumt{\sum\limits_t}
+\def\sumit{\sumi\sumt}
+
+\begin{align*}
+\intertext{We want to show that} 
+\ydddot = \xdddot\beta + \edddot
+\intertext{Ignoring time effects, we get}
+\yddot = y_{it} - \overline{y_{i}} = y_{it} - \frac{1}{T}\sumt y_{it} \\
+\implies \yddot = y_{it} - \frac{1}{T}\sumt \left(\alpha + x_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it} \right)
+\intertext{Applying the second within transformation, we get that}
+\ydddot = \yddot - \overline{\yddot} \\
+= \yddot - \frac{1}{N} \sumi \yddot \\
+= y_{it} - \overline{y_i} - \overline{y_t} + \overline{y} \\
+= \alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it} \\
+- \left(\frac{1}{T} \sumt (\alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it})\right) \\
+- \left(\frac{1}{N} \sumi (\alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it})\right) \\
++ \left(\frac{1}{NT} \sumit (\alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it})\right) \\ 
+= \beta \left(x_{it} - \overline{x_{i}} - \overline{x_{t}} + \overline{x}\right) + \epsilon_{it} - \overline{\epsilon_{i}} - \overline{\epsilon_{t}} + \overline{\epsilon} \intertext{Since} 
+\xdddot = x_{it} - \overline{x_{i}} - \overline{x_{t}} + \overline{x} 
+\intertext{and}
+\edddot = e_{it} - \overline{e_{i}} - \overline{e_{t}} + \overline{e}
+\intertext{We get that}
+\ydddot = \xdddot\beta + \edddot
+\end{align*}
 
 
 ## Part (b)
 **Show that the order of the transformations is unimportant. Give an intuitive
 explanation for why.**
+
+\begin{align*}
+\intertext{Reversing the order, we can show that we get the same result}
+\intertext{Again, we want to show that} 
+\ydddot = \xdddot\beta + \edddot
+\intertext{Ignoring individual effects, we get}
+\yddot = y_{it} - \overline{y_{t}} = y_{it} - \frac{1}{N}\sumi y_{it} \\
+\implies \yddot = y_{it} - \frac{1}{N}\sumi \left(\alpha + x_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it} \right)
+\intertext{Applying the second within transformation, we get that}
+\ydddot = \yddot - \overline{\yddot} \\
+= \yddot - \frac{1}{T} \sumi \yddot \\
+= y_{it} - \overline{y_t} - \overline{y_i} + \overline{y} \\
+= \alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it} \\
+- \left(\frac{1}{N} \sumi (\alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it})\right) \\
+- \left(\frac{1}{T} \sumt (\alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it})\right) \\
++ \left(\frac{1}{NT} \sumit (\alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it})\right) \\ 
+= \beta \left(x_{it} - \overline{x_{t}} - \overline{x_{i}} + \overline{x}\right) + \epsilon_{it} - \overline{\epsilon_{t}} - \overline{\epsilon_{i}} + \overline{\epsilon} \intertext{Since} 
+\xdddot = x_{it} - \overline{x_{t}} - \overline{x_{i}} + \overline{x} 
+\intertext{and}
+\edddot = e_{it} - \overline{e_{t}} - \overline{e_{i}} + \overline{e}
+\intertext{We get that}
+\ydddot = \xdddot\beta + \edddot
+\end{align*}
 
 
 
