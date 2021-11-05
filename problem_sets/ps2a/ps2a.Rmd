@@ -41,6 +41,9 @@ table_type = "text"
 library(tidyverse)
 library(foreign)
 library(stargazer)
+library(tinytex)
+library(haven)
+library(plm)
 ```
 
 
@@ -242,9 +245,8 @@ explanation for why.**
 \edddot = e_{it} - \overline{e_{t}} - \overline{e_{i}} + \overline{e}
 \intertext{We get that}
 \ydddot = \xdddot\beta + \edddot
+\intertext{Intuitively, the order of the transformations is unimportant because in the end, were still manage to difference out the individual and time effects. There is nothing particular to individual or time effects that would warrant removal in any particular order.}
 \end{align*}
-
-
 
 ## Part (c)
 **Does your answer to part (a) change if the panel becomes unbalanced (i.e.,
@@ -265,7 +267,7 @@ capita).**
 
 
 ```{r Load Data, results='hide', eval=F}
-data = read.dta('traffic_safety2.dta')
+data <- read_dta('traffic_safety2.dta')
 ```
 
 
@@ -275,8 +277,34 @@ all covariates that you believe are appropriate. Think carefully about which
 covariates should be log transformed and which should enter in levels. What
 happens when you add these covariates? Why?**
 
+```{r Bivariate OLS}
+df <- data %>% 
+    mutate(fat_pc = fatalities/population, ln_fat_pc = log(fat_pc))
 
+reg3a_1 <- lm(ln_fat_pc ~ primary, data = df)
+summary(reg3a_1)
+stargazer(reg3a_1, type = "text")
+```
 
+```{r OLS with year fixed effects}
+reg3a_2 <- lm(ln_fat_pc ~ primary + factor(year), data = df)
+stargazer(reg3a_2, type = "text")
+
+df.p <- pdata.frame(df, index = c("state", "year")) #declaring panel dataset
+reg3a_2_p <- plm(ln_fat_pc ~ primary, data = df.p, effect = "time", model = "within") #checking reg3a_2
+stargazer(reg3a_2_p, type = "text")
+
+```
+
+```{r OLS with controls and year fixed effects}
+reg3a_3 <- plm(ln_fat_pc ~ primary + college + beer + secondary + unemploy 
+               + log(totalvmt) + precip + snow32 + rural_speed + urban_speed, 
+               data = df.p, effect = "time", model = "within")
+stargazer(reg3a_3, type = "text")
+
+```
+
+Including these covariates drastically changes our point estimate on the primary belt law variable. These covariates must be correlated with both the primary belt law as well as log traffic fatalities per capita. NEED TO EXPLAIN MORE HERE. 
 
 ## Part (b)
 **Ignore omitted variables bias issues for the moment. Do you think the standard
