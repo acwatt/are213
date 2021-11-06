@@ -268,6 +268,7 @@ capita).**
 
 ```{r Load Data, results='hide', eval=F}
 data <- read_dta('traffic_safety2.dta')
+df <- data[data$state != 99,]
 ```
 
 
@@ -278,7 +279,7 @@ covariates should be log transformed and which should enter in levels. What
 happens when you add these covariates? Why?**
 
 ```{r Bivariate OLS}
-df <- data %>% 
+df <- df %>% 
     mutate(fat_pc = fatalities/population, ln_fat_pc = log(fat_pc))
 
 reg3a_1 <- lm(ln_fat_pc ~ primary, data = df)
@@ -297,14 +298,13 @@ stargazer(reg3a_2_p, type = "text")
 ```
 
 ```{r OLS with controls and year fixed effects}
-reg3a_3 <- plm(ln_fat_pc ~ primary + college + beer + secondary + unemploy 
-               + log(totalvmt) + precip + snow32 + rural_speed + urban_speed, 
+reg3a_3 <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy 
+               + log(totalvmt/population) + precip + snow32 + rural_speed + urban_speed, 
                data = df.p, effect = "time", model = "within")
 stargazer(reg3a_3, type = "text")
-
 ```
 
-Including these covariates drastically changes our point estimate on the primary belt law variable. These covariates must be correlated with both the primary belt law as well as log traffic fatalities per capita. NEED TO EXPLAIN MORE HERE. 
+Including these covariates drastically changes our point estimate, including the sign, on the primary belt law variable. These covariates must be correlated with both the primary belt law as well as log traffic fatalities per capita. NEED TO EXPLAIN MORE HERE. 
 
 ## Part (b)
 **Ignore omitted variables bias issues for the moment. Do you think the standard
