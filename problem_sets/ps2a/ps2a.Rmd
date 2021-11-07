@@ -301,8 +301,6 @@ stargazer(reg3a_2_p, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
 ```
 
 ```{r OLS with controls and year fixed effects}
-
-
 reg3a_3 <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy 
                + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed, 
                data = df.p, effect = "time", model = "within")
@@ -381,7 +379,7 @@ vcov_cluster <- (1104/1102)*(XX_inv) %*% (t(X_a) %*% v2_a %*% X_a) %*% XX_inv
 ```
 
 
-We observe that clustered SE are significantly higher than the original as well as robust SE. This sugest that correlation within state over time is seriously biasing our conventional standard errors.
+We observe that clustered SE are significantly higher than the original as well as robust SE. This suggest that correlation within state over time is seriously biasing our conventional standard errors.
 
 
 ## Part (c)
@@ -390,6 +388,29 @@ conditions will this give an unbiased estimate of the effect of primary seat
 belt laws on fatalities per capita? Do you believe those conditions are met? Are
 you concerned about the standard errors in this case?**
 
+In order for between estimators to be unbiased, individual state time-in-varying effects, which now rests within error term, should not correlated with included 'primary' or other co-variates. I do not think this "uncorrelated effects" condition would hold, given each states' time-invariant characteristics regarding average driving styles or fatality rate would likely impact whether state implements primary and secondary laws as well as driving conditions captured by covariates. With the between estimator, I am worried about SE, given we are down to 48 observations, one for each state, by averaging each state's observation over time.
+
+
+```{r}
+df_within <- df %>% select(-c("state", "year"))
+df_within <- aggregate(df_within, list(df$state), mean) %>%
+                mutate(ln_fat_pc_agg = log(fatalities/population), ln_tvmt_pc_agg = log(totalvmt/population))
+
+reg_3c_btw_nocov <- plm(ln_fat_pc_agg ~ primary, 
+                            data = df_within, 
+                            model = "between")
+
+#reg_3c_time <- plm(ln_fat_pc ~ primary, 
+#                              data = df, 
+#                              index = c("state", "year"),
+#                              model = "between",
+#                              effects = "time")
+
+reg_3c_btw_cov <- plm(ln_fat_pc_agg ~ primary + secondary + college + beer + unemploy
+                            + ln_tvmt_pc_agg + precip + snow32 + rural_speed + urban_speed,
+                            data = df_within, 
+                            model = "between")
+```
 
 
 ## Part (d)
