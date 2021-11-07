@@ -275,10 +275,7 @@ df <- dplyr::filter(data, state != 99)
 
 
 ## Part (a)
-**Run pooled bivariate OLS. Interpret. Add year fixed effects. Interpret. Add
-all covariates that you believe are appropriate. Think carefully about which
-covariates should be log transformed and which should enter in levels. What
-happens when you add these covariates? Why?**
+**Run pooled bivariate OLS. Interpret. Add year fixed effects. Interpret. Add all covariates that you believe are appropriate. Think carefully about which covariates should be log transformed and which should enter in levels. What happens when you add these covariates? Why?**
 
 ```{r Bivariate OLS}
 df <- df %>%
@@ -301,13 +298,21 @@ stargazer(reg3a_2_p, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
 ```
 
 ```{r OLS with controls and year fixed effects}
+
 reg3a_3 <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy 
                + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed, 
                data = df.p, effect = "time", model = "within")
 stargazer(reg3a_3, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
+
+reg3a_3.1 <- plm(ln_fat_pc ~ primary + college + beer + unemploy 
+               + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed, 
+               data = df.p, effect = "time", model = "within")
+stargazer(reg3a_3.1, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
 ```
 
-Including these covariates drastically changes our point estimate, including the sign, on the primary belt law variable. These covariates must be correlated with both the primary belt law as well as log traffic fatalities per capita. NEED TO EXPLAIN MORE HERE. 
+We included covariates that we believe to be correlated (both statistically and theoretically) with both the outcome (log fatalities per capita) and the treatment variable (primary). This includes weather variables, education, beer, unemployment, speed limits, and tvmt. Since tvmt is a level variable, we thought it best to divide it by population and take its log. We included "secondary" in one of the regressions to identify the marginal effect of having a primary seatbelt law in addition to the secondary one where that is already in place. 
+
+Including these covariates drastically changes our point estimate. When the covariates other than secondary are include, the effect essentially disappears though remains negative. However, once secondary is included, the effect remains insignificant but turns positive.
 
 ## Part (b)
 **Ignore omitted variables bias issues for the moment. Do you think the standard
