@@ -308,11 +308,25 @@ reg3a_3.1 <- plm(ln_fat_pc ~ primary + college + beer + unemploy
                + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed, 
                data = df.p, effect = "time", model = "within")
 stargazer(reg3a_3.1, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
+
+# with state fixed effects as well
+reg3a_3.2 <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy 
+               + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed + factor(state), 
+               data = df.p, effect = "time", model = "within")
+stargazer(reg3a_3.2, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
+
+reg3a_3.3 <- plm(ln_fat_pc ~ primary + college + beer + unemploy 
+               + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed + factor(state), 
+               data = df.p, effect = "time", model = "within")
+stargazer(reg3a_3.3, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
 ```
 
 We included covariates that we believe to be correlated (both statistically and theoretically) with both the outcome (log fatalities per capita) and the treatment variable (primary). This includes weather variables, education, beer, unemployment, speed limits, and tvmt. Since tvmt is a level variable, we thought it best to divide it by population and take its log. We included "secondary" in one of the regressions to identify the marginal effect of having a primary seatbelt law in addition to the secondary one where that is already in place. 
 
 Including these covariates drastically changes our point estimate. When the covariates other than secondary are include, the effect essentially disappears though remains negative. This is due to the fact that variation in fatalities per capita that we previously attributed to "primary" in the OLS regression without covariates is actually attributable to these other characteristics. Furthermore, once secondary is included, the effect remains insignificant but turns positive. If this is actually a true zero, then this could be because the secondary policy already prevents fatalities. If this is a true positive (we are less convinced), then it could be that the primary policy causes people to take less responsibility of one's own actions and depend on law enforcement. Laws can cause rebellion from teens and also unintentiolly shift responsibility from the citizen to the government.
+
+In addition, it is worth noting that when adding state fixed effects, the coefficient on primary becomes negative and significant, even with and without controling for "secondary." In fact, it is even more negative when controlling for "secondary." This, to us, seems to identify the treatment effect since it controls for any intrinsic state characteristics that were not included and could have cause omitted variable bias.
+
 
 ## Part (b)
 **Ignore omitted variables bias issues for the moment. Do you think the standard
