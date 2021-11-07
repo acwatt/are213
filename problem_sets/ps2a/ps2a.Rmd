@@ -403,6 +403,7 @@ reg_3c_btw_nocov <- plm(ln_fat_pc ~ primary,
 
 reg_3c_btw_nocov
 
+# Is between estimator same as simply including time fixed effects
 #reg_3c_time <- plm(ln_fat_pc ~ primary, 
 #                              data = df, 
 #                              index = c("state", "year"),
