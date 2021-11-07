@@ -376,11 +376,9 @@ Resid_a <- Y_a - (X_a %*% B_a) #1104 x 1 # This matches reg3a_1$residuals
 
 v2_a <- diag(diag(Resid_a %*% t(Resid_a))) #1104 x 1104
 
-vcov_cluster <- (1104/1102)*(XX_inv) %*% (t(X_a) %*% v2_a %*% X_a) %*% XX_inv
-(vcov_cluster[1,1]*(1104/1002))^(1/2) # 1.941604e-16
-(vcov_cluster[2,2]*(1104/1002))^(1/2) # 2.443184e-15
+vcov_cluster <- (XX_inv) %*% (t(X_a) %*% v2_a %*% X_a) %*% XX_inv
 
-# I think this is Robust SE. How can we cluster manually...
+vcov_cluster[2,2]^0.5
 ```
 
 
@@ -398,23 +396,31 @@ In order for between estimators to be unbiased, individual state time-in-varying
 
 ```{r}
 df_within <- df %>% select(-c("state", "year"))
-df_within <- aggregate(df_within, list(df$state), mean) %>%
-                mutate(ln_fat_pc_agg = log(fatalities/population), ln_tvmt_pc_agg = log(totalvmt/population))
+df_within <- aggregate(df_within, list(df$state), mean)
 
-reg_3c_btw_nocov <- plm(ln_fat_pc_agg ~ primary, 
+sapply(df_within, typeof)
+is.numeric(df_within$college)
+
+reg_3c_btw_nocov <- plm(ln_fat_pc ~ primary, 
                             data = df_within, 
                             model = "between")
 
+
+reg_3c_btw_nocov
+
+# Is between estimator same as simply including time fixed effects
 #reg_3c_time <- plm(ln_fat_pc ~ primary, 
 #                              data = df, 
 #                              index = c("state", "year"),
 #                              model = "between",
 #                              effects = "time")
 
-reg_3c_btw_cov <- plm(ln_fat_pc_agg ~ primary + secondary + college + beer + unemploy
-                            + ln_tvmt_pc_agg + precip + snow32 + rural_speed + urban_speed,
+reg_3c_btw_cov <- plm(ln_fat_pc ~ primary + secondary + beer + as.numeric(college) + unemploy
+                            + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed,
                             data = df_within, 
                             model = "between")
+
+reg_3c_btw_cov
 ```
 
 
@@ -424,6 +430,14 @@ conditions will this give an unbiased estimate of the effect of primary seat
 belt laws on fatalities per capita? What are its advantages or disadvantages as
 compared to pooled OLS?**
 
+```{r}
+reg_3d_btw_nocov <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy
+                            + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed,, 
+                            data = df, 
+                            model = "random")
+
+reg_3d_btw_nocov
+```
 
 
 ## Part (e)
