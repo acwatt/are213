@@ -515,7 +515,7 @@ need to correct for.
 The between estimator is consistent in the random effects model (under the RE assumptions) but not under fixed effects. Thus, in order for this between estimator to be unbiased, individual state time-invarying effects, which now rests within the error term, cannot be correlated with the independent variables (includeding 'primary' and other time-varying covariates). We do not think this assumption holds here, given each states' time-invariant characteristics regarding average driving styles or fatality rate would likely impact state adoption of primary and secondary laws as well as driving conditions captured by time-varying covariates. With the between estimator, we am worried about SE, given we are down to 48 observations, one for each state, by averaging each state's observation over time.
 
 
-```{r 3c}
+```{r 3c, results='asis'}
 data <- data %>% 
                 mutate(ln_fat_pc = log(fatal_per_cap), ln_vmt_pc = log(vmt_per_cap),
                        ln_precip = log(precip), ln_rspeed = log(rural_speed), 
@@ -561,33 +561,33 @@ stargazer(reg_3c_btw_nocov, reg_3c_btw_cov,
 
 ```{r}
 reg_3d_RE_bin <- plm(ln_fat_pc ~ primary, 
-                            data = df, 
+                            data = data, 
                             model = "random")
 
 reg_3d_RE_cov <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy, 
-                            data = df, 
+                            data = data, 
                             model = "random")
 
 reg_3d_RE_tf <- plm(ln_fat_pc ~ primary,
-                            data = df, 
+                            data = data, 
                             model = "random",
                             index = c("state", "year"), effect = ("time"))
 
 reg_3d_RE_covtf <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy
-                            + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed,
-                            data = df, 
+                            + ln_vmt_pc + ln_precip + snow32 + ln_rspeed + ln_uspeed,
+                            data = data, 
                             model = "random",
                             index = c("state", "year"), effect = ("time"))
   
 summary(reg_3d_RE_covtf)
                   
 reg_3d_pooled_bin <- plm(ln_fat_pc ~ primary, 
-                            data = df, 
+                            data = data, 
                             model = "pooling")
 
 reg_3d_pooled_cov <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy
-                            + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed, 
-                            data = df, 
+                            + ln_vmt_pc + ln_precip + snow32 + ln_rspeed + ln_uspeed, 
+                            data = data, 
                             model = "pooling")
 
 stargazer(reg_3d_RE_bin, reg_3d_RE_cov, reg_3d_pooled_bin, reg_3d_pooled_cov, 
