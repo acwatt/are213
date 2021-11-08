@@ -676,12 +676,12 @@ The FE estimates are less stable than the OLS estimates when adding covariates. 
 ## Part (i)
 **Make the case that the first-differences estimate is superior to the 5-year or long differences estimates.**
 
-
+First differences provides the researcher with more observations than the 5-year logn differences and therefore potentially more power.
 
 ## Part (j)
 **Make the case that the 5-year or long differences estimates are superior to the first-differences estimate.**
 
-
+Five-year differences could potentially identify a larger effect than first-differences, though with less power (fewer observations). This may also be the strategy a researcher would want to take if they suspect that the treatment to take a while to fully take effect.
 
 
 
