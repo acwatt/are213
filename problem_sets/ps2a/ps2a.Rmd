@@ -389,33 +389,40 @@ you concerned about the standard errors in this case?**
 In order for between estimators to be unbiased, individual state time-in-varying effects, which now rests within error term, should not correlated with included 'primary' or other co-variates. I do not think this "uncorrelated effects" condition would hold, given each states' time-invariant characteristics regarding average driving styles or fatality rate would likely impact whether state implements primary and secondary laws as well as driving conditions captured by covariates. With the between estimator, I am worried about SE, given we are down to 48 observations, one for each state, by averaging each state's observation over time.
 
 
-```{r}
-df_within <- df %>% select(-c("state", "year"))
-df_within <- aggregate(df_within, list(df$state), mean)
-
-sapply(df_within, typeof)
-is.numeric(df_within$college)
+```{r 3c}
+df_within <- df %>% 
+                group_by(state) %>% 
+                summarise(across(c(college, beer, primary, secondary, population, unemploy, 
+                                   fatalities, totalvmt, precip, snow32, rural_speed, urban_speed, fat_pc, ln_fat_pc, ln_tvmt_pc), mean, na.rm = TRUE))
 
 reg_3c_btw_nocov <- plm(ln_fat_pc ~ primary, 
                             data = df_within, 
                             model = "between")
 
-
-reg_3c_btw_nocov
-
 # Is between estimator same as simply including time fixed effects
 #reg_3c_time <- plm(ln_fat_pc ~ primary, 
-#                              data = df, 
-#                              index = c("state", "year"),
-#                              model = "between",
-#                              effects = "time")
+#                       data = df, 
+#                       index = c("state", "year"), model = "between", effects = "time")
 
-reg_3c_btw_cov <- plm(ln_fat_pc ~ primary + secondary + beer + as.numeric(college) + unemploy
+reg_3c_btw_cov <- plm(ln_fat_pc ~ primary + secondary + beer + college + unemploy
                             + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed,
                             data = df_within, 
-                            model = "between")
+                            index = c("state"), model = "between")
 
-reg_3c_btw_cov
+# Same Regression with lm() to check
+#reg_3c_btw_cov_checkwithlm <- lm(ln_fat_pc ~ primary + secondary + beer + college + unemploy
+#                                  + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed,
+#                                  data = df_within)
+
+stargazer(reg_3c_btw_nocov, reg_3c_btw_cov, 
+          title = "Between Estimator",
+          dep.var.caption = "Log(Fatality per Population)",
+          dep.var.labels.include = FALSE, model.names = FALSE,
+          column.labels = c("Binary", "Covariates"),
+          keep = c("primary"),
+          add.lines=list(c('Covariates', 'No', 'Yes')),
+          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
+          type = "text", digits = 4)
 ```
 
 
@@ -426,13 +433,44 @@ belt laws on fatalities per capita? What are its advantages or disadvantages as
 compared to pooled OLS?**
 
 ```{r}
-reg_3d_btw_nocov <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy
-                            + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed,, 
+reg_3d_RE_bin <- plm(ln_fat_pc ~ primary, 
                             data = df, 
                             model = "random")
 
-reg_3d_btw_nocov
+reg_3d_RE_tf <- plm(ln_fat_pc ~ primary,
+                            data = df, 
+                            model = "random",
+                            index = c("state", "year"), effect = ("time"))
+
+reg_3d_RE_covtf <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy
+                            + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed,
+                            data = df, 
+                            model = "random",
+                            index = c("state", "year"), effect = ("time"))
+                    
+reg_3d_pooled_bin <- plm(ln_fat_pc ~ primary, 
+                            data = df, 
+                            model = "pooling")
+
+reg_3d_pooled_cov <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy
+                            + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed, 
+                            data = df, 
+                            model = "pooling")
+
+stargazer(reg_3d_RE_bin, reg_3d_RE_tf, reg_3d_RE_covtf, reg_3d_pooled_bin, reg_3d_pooled_cov, 
+          title = "Random Effects vs Pooled",
+          dep.var.caption = "Log(Fatality per Population)",
+          dep.var.labels.include = FALSE, model.names = FALSE,
+          column.labels = c("RE", "RE", "RE", "Pooled", "Pooled"),
+          keep = c("primary"),
+          add.lines=list(c('Time FE', 'No','Yes', 'Yes', 'No', 'No'),
+                         c('Covariates', 'No', 'No', 'Yes', 'No', 'Yes')),
+          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
+          type = "text", digits = 4)
 ```
+
+Random Effects model will give unbiased estimates when the strict exogeneity condition and uncorrelated condition are satisfied. The advantages 
+
 
 
 ## Part (e)
