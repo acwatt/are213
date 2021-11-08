@@ -39,8 +39,6 @@ table_type = "text"
 
 # Packages
 ```{r packages, results='hide', message=FALSE, echo=T}
-# install.packages("EnvStats")
-
 library(tidyverse)
 library(haven)
 library(plm)
@@ -52,6 +50,7 @@ library(gridExtra)
 library(grid)
 library(gtable)
 library(tinytex)
+library(fastDummies)
 library(EnvStats)
 ```
 
@@ -213,7 +212,7 @@ easier to analyze the fixed effects regression using partitioned regression.)**
 \yddot = y_{it} - \overline{y_{i}} = y_{it} - \frac{1}{T}\sumt y_{it} \\
 \implies \yddot = y_{it} - \frac{1}{T}\sumt \left(\alpha + x_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it} \right)
 \intertext{Applying the second within transformation, we get that}
-\ydddot = \yddot - \overline{\yddot} \\
+\ydddot = \yddot - \overline{\ddot y_{t}} \\
 = \yddot - \frac{1}{N} \sumi \yddot \\
 = y_{it} - \overline{y_i} - \overline{y_t} + \overline{y} \\
 = \alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it} \\
@@ -254,12 +253,20 @@ explanation for why.**
 \edddot = e_{it} - \overline{e_{t}} - \overline{e_{i}} + \overline{e}
 \intertext{We get that}
 \ydddot = \xdddot\beta + \edddot
-\intertext{Intuitively, the order of the transformations is unimportant because in the end, were still manage to difference out the individual and time effects. There is nothing particular to individual or time effects that would warrant removal in any particular order.}
+\intertext{Intuitively, the order of the transformations is unimportant because
+in the end, were still manage to difference out the individual and time effects.
+There is nothing particular to individual or time effects that would warrant
+removal in any particular order.}
 \end{align*}
 
 ## Part (c)
-**Does your answer to part (a) change if the panel becomes unbalanced (i.e., contains different numbers of observations for each individual $i$). Why or why not?**
+**Does your answer to part (a) change if the panel becomes unbalanced (i.e.,
+contains different numbers of observations for each individual $i$). Why or why
+not?**
 
+Yes -- attrition from the panel may be related to the dependent variable and we
+might get selection bias. To address selection bias caused by non-ignorable
+attrition, we would need to weight by the inverse propensity score.
 
 
 
@@ -281,7 +288,12 @@ data = read_dta('traffic_safety2.dta') %>%
 ## Part (a)
 **Run pooled bivariate OLS. Interpret. Add year fixed effects. Interpret. Add all covariates that you believe are appropriate. Think carefully about which covariates should be log transformed and which should enter in levels. What happens when you add these covariates? Why?**
 
-```{r Bivariate OLS, Time FE, Cov and Time FE, echo = FALSE, eval = FALSE}
+
+```{r Bivariate OLS + Time FE + Cov and Time FE, echo = FALSE, eval = FALSE}
+df <- data %>%
+        mutate(fat_pc = fatalities/population,
+               ln_fat_pc = log(fat_pc),
+               ln_tvmt_pc = log(totalvmt/population))
 # Bivariate OLS 
 reg3a_1 <- lm(log(fatal_per_cap) ~ primary, data = data)
 reg3a_1_p <- plm(log(fatal_per_cap) ~ primary, data = data, model = "pooling")
@@ -340,10 +352,11 @@ reg_a_bivariate_plm = plm(log(fatal_per_cap) ~ primary,
 reg_a_yfe_lm = lm(log(fatal_per_cap) ~ primary + factor(year), data = data)
 # FE with plm
 reg_a_yfe_plm = plm(log(fatal_per_cap) ~ primary, 
-                data = data,
-                index = c("state", "year"), 
-                model = "within",
-                effect = "time")
+                    data = data,
+                    index = c("state", "year"),  # order matters: unit-var, time-var
+                    model = "within",
+                    effect = "time")  # only do time
+
 # FE + covars with lm
 reg_a_full_lm = lm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
                    + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
@@ -356,11 +369,8 @@ reg_a_full_plm = plm(log(fatal_per_cap) ~ primary + college + beer
                      index = c("state", "year"),  # order matters: unit-var, time-var
                      model = "within",
                      effect = "time")  # only do time
-
-# Checking in-state variation in rural_speed
-# d = data %>% group_by(state) %>% mutate(rural_speed_dev = abs(rural_speed - mean(rural_speed)), rural_speed_dev_mean = mean(rural_speed_dev))
-# plot(d$state, d$rural_speed_dev_mean)
 ```
+
 
 ```{r 3a Logged Version Table, results='asis'}
 stargazer(reg_a_bivariate_plm, reg_a_yfe_plm, reg_a_full_plm, type='text')
@@ -391,7 +401,20 @@ stargazer(reg3a_1, reg3b_1_robust, reg3a_2_p, reg3b_2_robust, reg3a_3, reg3b_3_r
           font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
           type = "text", digits = 4)
 
-# Manual Robust SE (Bivariate)
+reg3b_1_cluster <- coeftest(reg3a_1, vcov = vcovCL, cluster = ~state)
+reg3b_2_cluster <- coeftest(reg3a_2_p, vcov = vcovHC(reg3a_2_p, type = "HC0", cluster = "group"))
+reg3b_3_cluster <- coeftest(reg3a_3, vcov = vcovHC(reg3a_3, type = "HC0", cluster = "group"))
+
+stargazer(reg3a_1, reg3b_1_cluster, reg3a_2_p, reg3b_2_cluster, reg3a_3, reg3b_3_cluster,
+          title = "Regression with Clustered SE",
+          dep.var.caption = "Log(Fatality per Population)",
+          dep.var.labels.include = FALSE, model.names = FALSE,
+          column.labels = c("Biv", "Biv(Cluster)", "Yr FE", "Yr FE(Cluster)", "Ctr/Yr FE", "Ctr/Yr FE(Cluster)"),
+          keep = "primary",
+          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
+          type = "text", digits = 4)
+
+# Manually Calculate Robust SE for Bivariate OLS
 Y_a <- df[,"ln_fat_pc"] %>%
           as.matrix() #1104 x 1
 X_a <- df[,"primary"] %>% 
@@ -432,21 +455,9 @@ qplot(log(data$rural_speed), resid(reg_a_bivariate_plm), ylab="residuals", alpha
 qplot(log(data$urban_speed), resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
 qplot(log(data$vmt_per_cap), resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
 nrow = 4, heights=rep(12,4))
-
-
-#     p1 <- qplot(mpg, wt, data = mtcars, colour = cyl)
-# p2 <- qplot(mpg, data = mtcars) + ggtitle("title")
-# p3 <- qplot(mpg, data = mtcars, geom = "dotplot")
-# p4 <-
-#   p1 + facet_wrap( ~ carb, nrow = 1) + theme(legend.position = "none") +
-#   ggtitle("facetted plot")
-# grid.arrange(p1,p2)
 ```
 
-```{r 3.b standard errors bivariate}
-coeftest(reg_a_bivariate_lm, vcov = vcovHC(reg_a_bivariate_lm, method="white1", type="HC0"))
-coeftest(reg_a_bivariate_plm, vcov = vcovHC(reg_a_bivariate_plm, method="white1", type="HC0"))
-
+```{r 3.b bivariate robust SE (manual)}
 # by hand
 Sigma = diag(resid(reg_a_bivariate_plm)^2)
 X = model.matrix(~ primary, data = data)
@@ -454,34 +465,79 @@ XpX = t(X)%*%X
 XpXinv = solve(XpX)
 XpSigmaX = t(X)%*%Sigma%*%X
 var_b = XpXinv %*% XpSigmaX %*% XpXinv
-SE_b = sqrt(diag(var_b))
-SE_b
-```
-```{r 3.b standard errors year FE}
-library(lmtest)
-library(sandwich)
-coeftest(reg_a_yfe_lm, vcov = vcovHC(reg_a_yfe_lm, method="white1", type="HC0"))[[2]]
-coeftest(reg_a_yfe_plm, vcov = vcovHC(reg_a_yfe_plm, method="white1", type="HC0"))
+SE_3b_1 = sqrt(diag(var_b))
+SE_3b_1
 
+# canned
+coeftest(reg_a_bivariate_lm, vcov = vcovHC(reg_a_bivariate_lm, method="white1", type="HC0"))
+```
+
+
+
+```{r 3.b year FE robust SE (manual)}
 # by hand
-d_temp = data %>% mutate(resids = resid(reg_a_bivariate_plm))
-k = length(unique(data$year) + 1)
+d_temp = data %>%
+    mutate(resids = reg_a_yfe_lm$residuals) %>%
+    dummy_cols(., select_columns = 'year') %>%
+    select(primary, resids, state, contains('year_'))
+k = ncol(d_temp) - 2
 meat = matrix(0, nrow=k, ncol=k)
 # sum over all years
 # for each year, subset just that year and calc X'(ee')X
-for (y in unique(data$year)) {
-    X = model.matrix(~ primary - 1, data = filter(d_temp, year==y))
-    e = as.matrix(filter(d_temp, year==y) %>% select(resids))
+for (s in unique(data$state)) {
+    X = as.matrix(d_temp %>% filter(state==s) %>% select(-state, -resids))
+    e = as.matrix(d_temp %>% filter(state==s) %>% select(resids))
     meat = meat + t(X)%*% (e%*%t(e)) %*% X
 }
-rm(d_temp)
 
+# X'X on full data
+X = as.matrix(d_temp %>% select(-state, -resids))
 XpX = t(X)%*%X
 XpXinv = solve(t(X)%*%X)
-var_b = XpXinv %*% meat %*% XpXinv
-SE_b = sqrt(diag(var_b))
-SE_b
+N = length(unique(data$state))
+T_ = length(unique(data$year))
+var_b = XpXinv %*% meat %*% XpXinv * (N*T_ - 1) * T_ / ((N*T_ - k)*(T_ - 1))
+SE_b3_2 = sqrt(diag(var_b))
+rm(d_temp)
+# Cluster robust standard errors
+SE_b3_2[1]
+# Canned
+coeftest(reg_a_yfe_lm, vcov = vcovCL, cluster = ~state)[[2,2]]
 ```
+
+
+```{r 3.b year FE + covariates robust SE (manual)}
+# by hand
+d_temp = data %>%
+    mutate(resids = reg_a_yfe_lm$residuals) %>%
+    dummy_cols(., select_columns = 'year') %>%
+    select(primary, resids, state, contains('year_'))
+k = ncol(d_temp) - 2
+meat = matrix(0, nrow=k, ncol=k)
+# sum over all years
+# for each year, subset just that year and calc X'(ee')X
+for (s in unique(data$state)) {
+    X = as.matrix(d_temp %>% filter(state==s) %>% select(-state, -resids))
+    e = as.matrix(d_temp %>% filter(state==s) %>% select(resids))
+    meat = meat + t(X)%*% (e%*%t(e)) %*% X
+}
+
+# X'X on full data
+X = as.matrix(d_temp %>% select(-state, -resids))
+XpX = t(X)%*%X
+XpXinv = solve(t(X)%*%X)
+N = length(unique(data$state))
+T_ = length(unique(data$year))
+var_b = XpXinv %*% meat %*% XpXinv * (N*T_ - 1) * T_ / ((N*T_ - k)*(T_ - 1))
+SE_3b_3 = sqrt(diag(var_b))
+rm(d_temp)
+# Cluster robust standard errors
+SE_3b_3[1]
+
+# Canned
+coeftest(reg_a_full_lm, vcov = vcovCL, cluster = ~state)[[2,2]]
+```
+
 
 Standard errors from specifications in part (a) is likely incorrect given we have potential correlation across observations from same state.
 
