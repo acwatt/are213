@@ -337,20 +337,6 @@ stargazer(reg3a_3.3, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
 ```
 
 
-total vehicle miles traveled per capita: logged because, after using per capita
-variables, we think the increase in fatalities per capita would be proportional
-to a percentage point increase in vehicle miles traveled per capita, not
-absolute levels, since the percentage point increase is a better measure of
-deviation from the norm, and drivers are more likely to adjust poorly to a
-deviation from the norm than an absolute increase in vehicle miles traveled
-(since an absolute increase may not be very differnt from the norm in states
-that have relatively large average miles traveled.)
-
-Not inlcuding population because we are using per-capita variables
-
-Log precip because we car about percentage-point deviation from the norm. Don't log snow because it has zeros.
-
-When we add the covariates, the estimated effect on primary switches from significantly negative to insignificantly positive. Since we haven't yet controlled for state-level fixed effects, this could be from trying to compare states that have similar observable covariates that adopt primary safety belt laws at different times, but may have significant reasons for adopting when they did, and thus may have significant unobserved factors that are correlated with the primary safety belt law being in place.
 
 ```{r 3a Regressions with Logged Covariates}
 # Bivariate with lm
@@ -387,8 +373,7 @@ reg_a_full_plm = plm(log(fatal_per_cap) ~ primary + college + beer
 stargazer(reg_a_bivariate_plm, reg_a_yfe_plm, reg_a_full_plm, type='text')
 ```
 
-
-We included covariates that we believe to be correlated (both statistically and theoretically) with both the outcome (log fatalities per capita) and the treatment variable (primary). This includes weather variables, education, beer, unemployment, speed limits, and tvmt. Since tvmt is a level variable, we thought it best to divide it by population and take its log. We included "secondary" in one of the regressions to identify the marginal effect of having a primary seatbelt law in addition to the secondary one where that is already in place. 
+We included covariates that we believe to be correlated (both statistically and theoretically) with both the outcome (log fatalities per capita) and the treatment variable (primary). This includes weather variables, education, beer, unemployment, speed limits, and tvmt. Since tvmt is a level variable, we thought it best to divide it by population and take its log. We also logged total vehicle miles traveled per capita because we think the increase in fatalities per capita would be proportional to a percentage point increase in vehicle miles traveled per capita; not absolute levels, since the percentage point increase is a better measure of deviation from the norm, and drivers are more likely to adjust poorly to a deviation from the norm than to an absolute increase in vehicle miles traveled. In addtion, we logged precip because we care about percentage-point deviation from the norm. We did not log snow because it has zeros. Since we used per-capita measures, we did not include population. We included "secondary" in one of the regressions to identify the marginal effect of having a primary seatbelt law in addition to the secondary one where that is already in place. 
 
 Including these covariates drastically changes our point estimate. When the covariates other than secondary are include, the effect essentially disappears though remains negative. This is due to the fact that variation in fatalities per capita that we previously attributed to "primary" in the OLS regression without covariates is actually attributable to these other characteristics. Furthermore, once secondary is included, the effect remains insignificant but turns positive. If this is actually a true zero, then this could be because the secondary policy already prevents fatalities. If this is a true positive (we are less convinced), then it could be that the primary policy causes people to take less responsibility of one's own actions and depend on law enforcement. Laws can cause rebellion from teens and also unintentiolly shift responsibility from the citizen to the government.
 
@@ -724,17 +709,80 @@ The FE estimates are less stable than the OLS estimates when adding covariates. 
 ## Part (h)
 **Estimate a first-differences estimator, a 5-year differences estimator, and a long differences estimator, including year fixed effects (when feasible) and the appropriate covariates in each case. Briefly describe the pattern that emerges from the three differencing estimates. Where does the FE estimate fall in this pattern? Are you surprised?**
 
+```{r (h) Differencing Estimator}
+df_diff <- data %>% arrange(state, year) 
+varlist <- names(df_diff)[3:21]
+
+# First Differences
+for (i in varlist) {
+df_diff <- df_diff %>%
+              group_by(state) %>%
+              mutate("{i}_diff" := eval(as.symbol(i)) - dplyr::lag(eval(as.symbol(i))))
+}
+
+reg3h_1 = plm(ln_fat_pc_diff ~ primary_diff + college_diff + beer_diff
+                     + secondary_diff + unemploy_diff + ln_vmt_pc_diff + ln_precip_diff + snow32_diff
+                     + ln_rspeed_diff + ln_uspeed_diff, 
+                     data = df_diff,
+                     index = c("state", "year"),
+                     model = "within",
+                     effect = "time")
+
+# Five Year Difference Estimator
+df_diff <- data %>% arrange(state, year) 
+
+for (i in varlist) {
+df_diff <- df_diff %>%
+              group_by(state) %>%
+              mutate("{i}_diff" := eval(as.symbol(i)) - dplyr::lag(eval(as.symbol(i)), n= 2))
+}
+
+reg3h_2 = plm(ln_fat_pc_diff ~ primary_diff + college_diff + beer_diff
+                     + secondary_diff + unemploy_diff + ln_vmt_pc_diff + ln_precip_diff + snow32_diff
+                     + ln_rspeed_diff + ln_uspeed_diff, 
+                     data = df_diff,
+                     index = c("state", "year"),
+                     model = "within",
+                     effect = "time")
+
+
+# Long Differences Estimator
+df_diff <- data %>% arrange(state, year) 
+
+for (i in varlist) {
+df_diff <- df_diff %>%
+              group_by(state) %>%
+              mutate("{i}_diff" := eval(as.symbol(i)) - dplyr::lag(eval(as.symbol(i)), n= 22))
+}
+
+reg3h_3 = plm(ln_fat_pc_diff ~ primary_diff + college_diff + beer_diff
+                     + secondary_diff + unemploy_diff + ln_vmt_pc_diff + ln_precip_diff + snow32_diff
+                     + ln_rspeed_diff + ln_uspeed_diff, 
+                     data = df_diff,
+                     index = c("state", "year"),
+                     model = "pooling")
+
+# Table
+stargazer(reg3h_1, reg3h_2, reg3h_3, 
+          title = "First, Second, and Long Difference Estimator",
+          dep.var.caption = "Differences in Log(Fatality per Population)",
+          dep.var.labels.include = FALSE, model.names = FALSE,
+          column.labels = c("1st", "2nd", "Long"),
+          add.lines=list(c('Time FE', 'Yes', 'Yes', 'No')),
+          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
+          type = "text", digits = 4)
+```
 
 
 ## Part (i)
 **Make the case that the first-differences estimate is superior to the 5-year or long differences estimates.**
 
-
+First differences provides the researcher with more observations than the 5-year logn differences and therefore potentially more power.
 
 ## Part (j)
 **Make the case that the 5-year or long differences estimates are superior to the first-differences estimate.**
 
-
+Five-year differences could potentially identify a larger effect than first-differences, though with less power (fewer observations). This may also be the strategy a researcher would want to take if they suspect that the treatment to take a while to fully take effect.
 
 
 
