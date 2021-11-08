@@ -49,6 +49,7 @@ library(gridExtra)
 library(grid)
 library(gtable)
 library(tinytex)
+library(fastDummies)
 ```
 
 
@@ -283,8 +284,8 @@ data = read_dta('traffic_safety2.dta') %>%
 **Run pooled bivariate OLS. Interpret. Add year fixed effects. Interpret. Add all covariates that you believe are appropriate. Think carefully about which covariates should be log transformed and which should enter in levels. What happens when you add these covariates? Why?**
 
 ```{r Bivariate OLS}
-df <- df %>%
-        mutate(fat_pc = fatalities/population, 
+df <- data %>%
+        mutate(fat_pc = fatalities/population,
                ln_fat_pc = log(fat_pc),
                ln_tvmt_pc = log(totalvmt/population))
 
@@ -331,9 +332,9 @@ reg_a_yfe_lm = lm(log(fatal_per_cap) ~ primary + factor(year), data = data)
 # FE with plm
 reg_a_yfe_plm = plm(log(fatal_per_cap) ~ primary, 
                 data = data,
-                index = c("year"), 
-                model = "within",
-                effect = "individual")
+                     index = c("state", "year"),  # order matters: unit-var, time-var
+                     model = "within",
+                     effect = "time")  # only do time
 # FE + covars with lm
 reg_a_full_lm = lm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
                    + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
@@ -353,7 +354,7 @@ reg_a_full_plm = plm(log(fatal_per_cap) ~ primary + factor(year) + college + bee
 # plot(d$state, d$rural_speed_dev_mean)
 ```
 
-```{r 3a table, results='asis'}
+```{r 3a table Aaron, results='asis'}
 stargazer(reg_a_bivariate_plm, reg_a_yfe_plm, reg_a_full_plm, type='text')
 ```
 
@@ -415,7 +416,7 @@ stargazer(reg3a_1, reg3b_1_robust, reg3a_2_p, reg3b_2_robust, reg3a_3, reg3b_3_r
 
 We observe that for simple bivariate regression and spepcification with only year fixed effects, robust standards are slightly larger. In model with controls and time fixed effects, robust standard errors are slightly smaller.
 
-```{r 3b Clustered SE (Canned)}
+```{r 3b Robust SE (Canned)}
 reg3b_1_cluster <- coeftest(reg3a_1, vcov = vcovCL, cluster = ~state)
 reg3b_2_cluster <- coeftest(reg3a_2_p, vcov = vcovHC(reg3a_2_p, type = "HC0", cluster = "group"))
 reg3b_3_cluster <- coeftest(reg3a_3, vcov = vcovHC(reg3a_3, type = "HC0", cluster = "group"))
@@ -431,8 +432,8 @@ stargazer(reg3a_1, reg3b_1_cluster, reg3a_2_p, reg3b_2_cluster, reg3a_3, reg3b_3
 ```
 
 
-```{r 3b Clustered SE (Manual Calculation)}
-# Manually Calculate Clustered SE for Bivariate OLS
+```{r 3b Robust SE (Manual Calculation)}
+# Manually Calculate Robust SE for Bivariate OLS
 Y_a <- df[,"ln_fat_pc"] %>%
           as.matrix() #1104 x 1
 
@@ -455,7 +456,9 @@ vcov_cluster[2,2]^0.5
 ```
 
 
-We observe that clustered SE are significantly higher than the original as well as robust SE. This suggest that correlation within state over time is seriously biasing our conventional standard errors.
+We observe that clustered SE are significantly higher than the original as well
+as robust SE. This suggest that correlation within state over time is seriously
+biasing our conventional standard errors.
 
 From the below plots of the residuals, we can see that the variance of the
 residuals is not constant along many of our covariates -- especially speed
@@ -484,10 +487,7 @@ nrow = 4, heights=rep(12,4))
 # grid.arrange(p1,p2)
 ```
 
-```{r 3.b standard errors bivariate}
-coeftest(reg_a_bivariate_lm, vcov = vcovHC(reg_a_bivariate_lm, method="white1", type="HC0"))
-coeftest(reg_a_bivariate_plm, vcov = vcovHC(reg_a_bivariate_plm, method="white1", type="HC0"))
-
+```{r 3.b bivariate robust SE (manual)}
 # by hand
 Sigma = diag(resid(reg_a_bivariate_plm)^2)
 X = model.matrix(~ primary, data = data)
@@ -495,34 +495,79 @@ XpX = t(X)%*%X
 XpXinv = solve(XpX)
 XpSigmaX = t(X)%*%Sigma%*%X
 var_b = XpXinv %*% XpSigmaX %*% XpXinv
-SE_b = sqrt(diag(var_b))
-SE_b
-```
-```{r 3.b standard errors year FE}
-library(lmtest)
-library(sandwich)
-coeftest(reg_a_yfe_lm, vcov = vcovHC(reg_a_yfe_lm, method="white1", type="HC0"))[[2]]
-coeftest(reg_a_yfe_plm, vcov = vcovHC(reg_a_yfe_plm, method="white1", type="HC0"))
+SE_3b_1 = sqrt(diag(var_b))
+SE_3b_1
 
+# canned
+coeftest(reg_a_bivariate_lm, vcov = vcovHC(reg_a_bivariate_lm, method="white1", type="HC0"))
+```
+
+
+
+```{r 3.b year FE robust SE (manual)}
 # by hand
-d_temp = data %>% mutate(resids = resid(reg_a_bivariate_plm))
-k = length(unique(data$year) + 1)
+d_temp = data %>%
+    mutate(resids = reg_a_yfe_lm$residuals) %>%
+    dummy_cols(., select_columns = 'year') %>%
+    select(primary, resids, state, contains('year_'))
+k = ncol(d_temp) - 2
 meat = matrix(0, nrow=k, ncol=k)
 # sum over all years
 # for each year, subset just that year and calc X'(ee')X
-for (y in unique(data$year)) {
-    X = model.matrix(~ primary - 1, data = filter(d_temp, year==y))
-    e = as.matrix(filter(d_temp, year==y) %>% select(resids))
+for (s in unique(data$state)) {
+    X = as.matrix(d_temp %>% filter(state==s) %>% select(-state, -resids))
+    e = as.matrix(d_temp %>% filter(state==s) %>% select(resids))
     meat = meat + t(X)%*% (e%*%t(e)) %*% X
 }
-rm(d_temp)
 
+# X'X on full data
+X = as.matrix(d_temp %>% select(-state, -resids))
 XpX = t(X)%*%X
 XpXinv = solve(t(X)%*%X)
-var_b = XpXinv %*% meat %*% XpXinv
+N = length(unique(data$state))
+T_ = length(unique(data$year))
+var_b = XpXinv %*% meat %*% XpXinv * (N*T_ - 1) * T_ / ((N*T_ - k)*(T_ - 1))
 SE_b = sqrt(diag(var_b))
-SE_b
+rm(d_temp)
+# Cluster robust standard errors
+SE_b3_2[1]
+# Canned
+coeftest(reg_a_yfe_lm, vcov = vcovCL, cluster = ~state)[[2,2]]
 ```
+
+
+```{r 3.b year FE + covariates robust SE (manual)}
+# by hand
+d_temp = data %>%
+    mutate(resids = reg_a_yfe_lm$residuals) %>%
+    dummy_cols(., select_columns = 'year') %>%
+    select(primary, resids, state, contains('year_'))
+k = ncol(d_temp) - 2
+meat = matrix(0, nrow=k, ncol=k)
+# sum over all years
+# for each year, subset just that year and calc X'(ee')X
+for (s in unique(data$state)) {
+    X = as.matrix(d_temp %>% filter(state==s) %>% select(-state, -resids))
+    e = as.matrix(d_temp %>% filter(state==s) %>% select(resids))
+    meat = meat + t(X)%*% (e%*%t(e)) %*% X
+}
+
+# X'X on full data
+X = as.matrix(d_temp %>% select(-state, -resids))
+XpX = t(X)%*%X
+XpXinv = solve(t(X)%*%X)
+N = length(unique(data$state))
+T_ = length(unique(data$year))
+var_b = XpXinv %*% meat %*% XpXinv * (N*T_ - 1) * T_ / ((N*T_ - k)*(T_ - 1))
+SE_3b_3 = sqrt(diag(var_b))
+rm(d_temp)
+# Cluster robust standard errors
+SE_3b_3[1]
+
+# Canned
+coeftest(reg_a_full_lm, vcov = vcovCL, cluster = ~state)[[2,2]]
+```
+
 
 ## Part (c)
 **Compute the between estimator, both with and without covariates. Under what
@@ -571,7 +616,7 @@ compared to pooled OLS?**
 
 ```{r}
 reg_3d_btw_nocov <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy
-                            + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed,, 
+                            + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed,
                             data = df, 
                             model = "random")
 
