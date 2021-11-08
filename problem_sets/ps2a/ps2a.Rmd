@@ -14,6 +14,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = e
 ---
 
 ```{r setup, include=FALSE}
+rm(list=ls())
 knitr::opts_chunk$set(echo = TRUE)
 ```
 <!--
@@ -282,82 +283,30 @@ data = read_dta('traffic_safety2.dta') %>%
 ## Part (a)
 **Run pooled bivariate OLS. Interpret. Add year fixed effects. Interpret. Add all covariates that you believe are appropriate. Think carefully about which covariates should be log transformed and which should enter in levels. What happens when you add these covariates? Why?**
 
-```{r Bivariate OLS}
-df <- df %>%
-        mutate(fat_pc = fatalities/population, 
-               ln_fat_pc = log(fat_pc),
-               ln_tvmt_pc = log(totalvmt/population))
+```{r Bivariate OLS, Time FE, Cov and Time FE, echo = FALSE, eval = FALSE}
+# Bivariate OLS 
+reg3a_1 <- lm(log(fatal_per_cap) ~ primary, data = data)
+reg3a_1_p <- plm(log(fatal_per_cap) ~ primary, data = data, model = "pooling")
 
-reg3a_1 <- lm(ln_fat_pc ~ primary, data = df)
-summary(reg3a_1)
-stargazer(reg3a_1, type = "text")
-```
+# Time FE
+df.p <- pdata.frame(data, index = c("state", "year")) #declaring panel dataset
+reg3a_2 <- lm(log(fatal_per_cap) ~ primary + factor(year), data = data)
+reg3a_2_p <- plm(log(fatal_per_cap) ~ primary, data = df.p, effect = "time", model = "within") #checking reg3a_2
 
-```{r OLS with year fixed effects}
-reg3a_2 <- lm(ln_fat_pc ~ primary + factor(year), data = df)
-stargazer(reg3a_2, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
-
-df.p <- pdata.frame(df, index = c("state", "year")) #declaring panel dataset
-reg3a_2_p <- plm(ln_fat_pc ~ primary, data = df.p, effect = "time", model = "within") #checking reg3a_2
-stargazer(reg3a_2_p, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
-```
-
-
-
-total vehicle miles traveled per capita: logged because, after using per capita
-variables, we think the increase in fatalities per capita would be proportional
-to a percentage point increase in vehicle miles traveled per capita, not
-absolute levels, since the percentage point increase is a better measure of
-deviation from the norm, and drivers are more likely to adjust poorly to a
-deviation from the norm than an absolute increase in vehicle miles traveled
-(since an absolute increase may not be very differnt from the norm in states
-that have relatively large average miles traveled.)
-
-Not inlcuding population because we are using per-capita variables
-
-Log precip because we car about percentage-point deviation from the norm. Don't log snow because it has zeros.
-
-When we add the covariates, the estimated effect on primary switches from significantly negative to insignificantly positive. Since we haven't yet controlled for state-level fixed effects, this could be from trying to compare states that have similar observable covariates that adopt primary safety belt laws at different times, but may have significant reasons for adopting when they did, and thus may have significant unobserved factors that are correlated with the primary safety belt law being in place.
-
-```{r OLS with controls and year fixed effects}
-# Bivariate with lm
-reg_a_bivariate_lm = lm(log(fatal_per_cap) ~ primary , data = data)
-# Bivariate with plm
-reg_a_bivariate_plm = plm(log(fatal_per_cap) ~ primary, 
-                       data = data,
-                       model = "pooling")
-# FE with lm
-reg_a_yfe_lm = lm(log(fatal_per_cap) ~ primary + factor(year), data = data)
-# FE with plm
-reg_a_yfe_plm = plm(log(fatal_per_cap) ~ primary, 
-                data = data,
-                index = c("year"), 
-                model = "within",
-                effect = "individual")
-# FE + covars with lm
-reg_a_full_lm = lm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
-                   + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
-                   + log(rural_speed) + log(urban_speed), data = data)
-# FE + covars with plm
-reg_a_full_plm = plm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
-                     + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
-                     + log(rural_speed) + log(urban_speed), 
+# Time FE and COv
+reg3a_3_p = plm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
+                     + secondary + unemploy + log(vmt_per_cap) + precip + snow32
+                     + rural_speed + urban_speed, 
                      data = data,
-                     index = c("state", "year"),  # order matters: unit-var, time-var
+                     index = c("state", "year"),
                      model = "within",
-                     effect = "time")  # only do time
+                     effect = "time")
 
-
-# Checking in-state variation in rural_speed
-# d = data %>% group_by(state) %>% mutate(rural_speed_dev = abs(rural_speed - mean(rural_speed)), rural_speed_dev_mean = mean(rural_speed_dev))
-# plot(d$state, d$rural_speed_dev_mean)
+# Make Table (All 3 Models)
+stargazer(reg3a_1_p, reg3a_2_p, reg3a_3_p, type='text')
 ```
 
-```{r 3a table, results='asis'}
-stargazer(reg_a_bivariate_plm, reg_a_yfe_plm, reg_a_full_plm, type='text')
-```
-
-```{r 3a table, results='asis'}
+```{r 3a Irrelvant, echo = FALSE, eval = FALSE}
 reg3a_3 <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy 
                + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed, 
                data = df.p, effect = "time", model = "within")
@@ -379,6 +328,60 @@ reg3a_3.3 <- plm(ln_fat_pc ~ primary + college + beer + unemploy
                data = df.p, effect = "time", model = "within")
 stargazer(reg3a_3.3, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
 ```
+
+
+total vehicle miles traveled per capita: logged because, after using per capita
+variables, we think the increase in fatalities per capita would be proportional
+to a percentage point increase in vehicle miles traveled per capita, not
+absolute levels, since the percentage point increase is a better measure of
+deviation from the norm, and drivers are more likely to adjust poorly to a
+deviation from the norm than an absolute increase in vehicle miles traveled
+(since an absolute increase may not be very differnt from the norm in states
+that have relatively large average miles traveled.)
+
+Not inlcuding population because we are using per-capita variables
+
+Log precip because we car about percentage-point deviation from the norm. Don't log snow because it has zeros.
+
+When we add the covariates, the estimated effect on primary switches from significantly negative to insignificantly positive. Since we haven't yet controlled for state-level fixed effects, this could be from trying to compare states that have similar observable covariates that adopt primary safety belt laws at different times, but may have significant reasons for adopting when they did, and thus may have significant unobserved factors that are correlated with the primary safety belt law being in place.
+
+```{r 3a Regressions with Logged Covariates}
+# Bivariate with lm
+reg_a_bivariate_lm = lm(log(fatal_per_cap) ~ primary , data = data)
+# Bivariate with plm
+reg_a_bivariate_plm = plm(log(fatal_per_cap) ~ primary, 
+                       data = data,
+                       model = "pooling")
+# FE with lm
+reg_a_yfe_lm = lm(log(fatal_per_cap) ~ primary + factor(year), data = data)
+# FE with plm
+reg_a_yfe_plm = plm(log(fatal_per_cap) ~ primary, 
+                data = data,
+                index = c("state", "year"), 
+                model = "within",
+                effect = "time")
+# FE + covars with lm
+reg_a_full_lm = lm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
+                   + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
+                   + log(rural_speed) + log(urban_speed), data = data)
+# FE + covars with plm
+reg_a_full_plm = plm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
+                     + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
+                     + log(rural_speed) + log(urban_speed), 
+                     data = data,
+                     index = c("state", "year"),  # order matters: unit-var, time-var
+                     model = "within",
+                     effect = "time")  # only do time
+
+# Checking in-state variation in rural_speed
+# d = data %>% group_by(state) %>% mutate(rural_speed_dev = abs(rural_speed - mean(rural_speed)), rural_speed_dev_mean = mean(rural_speed_dev))
+# plot(d$state, d$rural_speed_dev_mean)
+```
+
+```{r 3a Logged Version Table, results='asis'}
+stargazer(reg_a_bivariate_plm, reg_a_yfe_plm, reg_a_full_plm, type='text')
+```
+
 
 We included covariates that we believe to be correlated (both statistically and theoretically) with both the outcome (log fatalities per capita) and the treatment variable (primary). This includes weather variables, education, beer, unemployment, speed limits, and tvmt. Since tvmt is a level variable, we thought it best to divide it by population and take its log. We included "secondary" in one of the regressions to identify the marginal effect of having a primary seatbelt law in addition to the secondary one where that is already in place. 
 
@@ -431,7 +434,7 @@ stargazer(reg3a_1, reg3b_1_cluster, reg3a_2_p, reg3b_2_cluster, reg3a_3, reg3b_3
 ```
 
 
-```{r 3b Clustered SE (Manual Calculation)}
+```{r 3b Clustered SE (Manual Calculation), eval = FALSE}
 # Manually Calculate Clustered SE for Bivariate OLS
 Y_a <- df[,"ln_fat_pc"] %>%
           as.matrix() #1104 x 1
@@ -591,7 +594,9 @@ reg_3d_RE_covtf <- plm(ln_fat_pc ~ primary + secondary + college + beer + unempl
                             data = df, 
                             model = "random",
                             index = c("state", "year"), effect = ("time"))
-                    
+  
+summary(reg_3d_RE_covtf)
+                  
 reg_3d_pooled_bin <- plm(ln_fat_pc ~ primary, 
                             data = df, 
                             model = "pooling")
@@ -613,7 +618,9 @@ stargazer(reg_3d_RE_bin, reg_3d_RE_tf, reg_3d_RE_covtf, reg_3d_pooled_bin, reg_3
           type = "text", digits = 4)
 ```
 
-Random Effects model will give unbiased estimates when the strict exogeneity condition and uncorrelated condition are satisfied. The advantages 
+Random Effects model will give unbiased estimates when the strict exogeneity condition and uncorrelated condition are satisfied. 
+
+
 
 
 
