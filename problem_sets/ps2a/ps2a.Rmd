@@ -39,8 +39,6 @@ table_type = "text"
 
 # Packages
 ```{r packages, results='hide', message=FALSE, echo=T}
-# install.packages("EnvStats")
-
 library(tidyverse)
 library(haven)
 library(plm)
@@ -255,15 +253,20 @@ explanation for why.**
 \edddot = e_{it} - \overline{e_{t}} - \overline{e_{i}} + \overline{e}
 \intertext{We get that}
 \ydddot = \xdddot\beta + \edddot
-\intertext{Intuitively, the order of the transformations is unimportant because in the end, were still manage to difference out the individual and time effects. There is nothing particular to individual or time effects that would warrant removal in any particular order.}
+\intertext{Intuitively, the order of the transformations is unimportant because
+in the end, were still manage to difference out the individual and time effects.
+There is nothing particular to individual or time effects that would warrant
+removal in any particular order.}
 \end{align*}
 
 ## Part (c)
-**Does your answer to part (a) change if the panel becomes unbalanced (i.e., contains different numbers of observations for each individual $i$). Why or why not?**
+**Does your answer to part (a) change if the panel becomes unbalanced (i.e.,
+contains different numbers of observations for each individual $i$). Why or why
+not?**
 
-Yes. In a particularly bad case, attrition from the panel may be related to the
-dependent variable and we might get selection bias. However, even with
-completely ignorable attrition, we still need to adjust
+Yes -- attrition from the panel may be related to the dependent variable and we
+might get selection bias. To address selection bias caused by non-ignorable
+attrition, we would need to weight by the inverse propensity score.
 
 
 
