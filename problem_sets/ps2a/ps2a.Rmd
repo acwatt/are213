@@ -513,10 +513,15 @@ The between estimator is consistent in the random effects model (under the RE as
 
 
 ```{r 3c}
-df_within <- df %>% 
+data <- data %>% 
+                mutate(ln_fat_pc = log(fatal_per_cap), ln_vmt_pc = log(vmt_per_cap),
+                       ln_precip = log(precip), ln_rspeed = log(rural_speed), 
+                       ln_uspeed = log(urban_speed))
+df_within <- data %>% 
                 group_by(state) %>% 
                 summarise(across(c(college, beer, primary, secondary, population, unemploy, 
-                                   fatalities, totalvmt, precip, snow32, rural_speed, urban_speed, fat_pc, ln_fat_pc, ln_tvmt_pc), mean, na.rm = TRUE))
+                                   fatalities, totalvmt, precip, snow32, rural_speed, urban_speed, fatal_per_cap, 
+                                   ln_fat_pc, ln_vmt_pc, ln_precip, ln_rspeed, ln_uspeed), mean, na.rm = TRUE))
 
 reg_3c_btw_nocov <- plm(ln_fat_pc ~ primary, 
                             data = df_within, 
@@ -528,7 +533,7 @@ reg_3c_btw_nocov <- plm(ln_fat_pc ~ primary,
 #                       index = c("state", "year"), model = "between", effects = "time")
 
 reg_3c_btw_cov <- plm(ln_fat_pc ~ primary + secondary + beer + college + unemploy
-                            + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed,
+                            + ln_vmt_pc + ln_precip + snow32 + ln_rspeed + ln_uspeed,
                             data = df_within, 
                             index = c("state"), model = "between")
 
