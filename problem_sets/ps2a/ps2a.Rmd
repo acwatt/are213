@@ -255,8 +255,7 @@ explanation for why.**
 \end{align*}
 
 ## Part (c)
-**Does your answer to part (a) change if the panel becomes unbalanced (i.e.,
-contains different numbers of observations for each individual $i$). Why or why not?**
+**Does your answer to part (a) change if the panel becomes unbalanced (i.e., contains different numbers of observations for each individual $i$). Why or why not?**
 
 
 
@@ -265,11 +264,7 @@ contains different numbers of observations for each individual $i$). Why or why 
 <!--=========================================================================-->
 # Problem 3
 <!--=========================================================================-->
-**We now begin with an actual analysis of the data. The goal here is to
-determine what effect, if any, primary belt laws have on the log of traffic
-fatalities per capita (we log the LHS variable because we believe the effect of
-safety belt laws should be proportional to the overall level of fatalities per
-capita).**
+**We now begin with an actual analysis of the data. The goal here is to determine what effect, if any, primary belt laws have on the log of traffic fatalities per capita (we log the LHS variable because we believe the effect of safety belt laws should be proportional to the overall level of fatalities per capita).**
 
 
 ```{r Load Data, results='hide', eval=T}
@@ -387,17 +382,11 @@ We included covariates that we believe to be correlated (both statistically and 
 
 Including these covariates drastically changes our point estimate. When the covariates other than secondary are include, the effect essentially disappears though remains negative. This is due to the fact that variation in fatalities per capita that we previously attributed to "primary" in the OLS regression without covariates is actually attributable to these other characteristics. Furthermore, once secondary is included, the effect remains insignificant but turns positive. If this is actually a true zero, then this could be because the secondary policy already prevents fatalities. If this is a true positive (we are less convinced), then it could be that the primary policy causes people to take less responsibility of one's own actions and depend on law enforcement. Laws can cause rebellion from teens and also unintentiolly shift responsibility from the citizen to the government.
 
-In addition, it is worth noting that when adding state fixed effects, the coefficient on primary becomes negative and significant, even with and without controling for "secondary." In fact, it is even more negative when controlling for "secondary." This, to us, seems to identify the treatment effect since it controls for any intrinsic state characteristics that were not included and could have cause omitted variable bias.
+In addition, it is worth noting that when adding state fixed effects, the coefficient on primary becomes negative and significant, even with and without controlling for "secondary." In fact, it is even more negative when controlling for "secondary." This, to us, seems to identify the treatment effect since it controls for any intrinsic state characteristics that were not included and could have cause omitted variable bias. However, we are not convinced this is the correct treatment effect since the treatment may be time-varying and these policies were enacted at different times (see section notes 11/1).
 
 
 ## Part (b)
-**Ignore omitted variables bias issues for the moment. Do you think the standard
-errors from above are right? Compute the Huber-White heteroskedasticity robust
-standard errors (e.g., ", robust"). Do they change much? Compute the clustered
-standard errors that are robust to within-state correlation (e.g., ",
-cluster(state)"). Do this using both the "canned" command and manually using the
-formulas we learned in class. Do the standard errors change much? Are you
-surprised? Interpret.**
+**Ignore omitted variables bias issues for the moment. Do you think the standard errors from above are right? Compute the Huber-White heteroskedasticity robust standard errors (e.g., ", robust"). Do they change much? Compute the clustered standard errors that are robust to within-state correlation (e.g., ", cluster(state)"). Do this using both the "canned" command and manually using the formulas we learned in class. Do the standard errors change much? Are you surprised? Interpret.**
 
 Standard errors from specifications in part (a) is likely incorrect given we have potential correlation across observations from same state.
 
@@ -528,12 +517,9 @@ SE_b
 ```
 
 ## Part (c)
-**Compute the between estimator, both with and without covariates. Under what
-conditions will this give an unbiased estimate of the effect of primary seat
-belt laws on fatalities per capita? Do you believe those conditions are met? Are
-you concerned about the standard errors in this case?**
+**Compute the between estimator, both with and without covariates. Under what conditions will this give an unbiased estimate of the effect of primary seat belt laws on fatalities per capita? Do you believe those conditions are met? Are you concerned about the standard errors in this case?**
 
-In order for between estimators to be unbiased, individual state time-in-varying effects, which now rests within error term, should not correlated with included 'primary' or other co-variates. I do not think this "uncorrelated effects" condition would hold, given each states' time-invariant characteristics regarding average driving styles or fatality rate would likely impact whether state implements primary and secondary laws as well as driving conditions captured by covariates. With the between estimator, I am worried about SE, given we are down to 48 observations, one for each state, by averaging each state's observation over time.
+The between estimator is consistent in the random effects model (under the RE assumptions) but not under fixed effects. Thus, in order for this between estimator to be unbiased, individual state time-invarying effects, which now rests within the error term, cannot be correlated with the independent variables (includeding 'primary' and other time-varying covariates). We do not think this assumption holds here, given each states' time-invariant characteristics regarding average driving styles or fatality rate would likely impact state adoption of primary and secondary laws as well as driving conditions captured by time-varying covariates. With the between estimator, we am worried about SE, given we are down to 48 observations, one for each state, by averaging each state's observation over time.
 
 
 ```{r 3c}
@@ -572,12 +558,8 @@ stargazer(reg_3c_btw_nocov, reg_3c_btw_cov,
           type = "text", digits = 4)
 ```
 
-
 ## Part (d)
-**Compute the Random Effects estimator (including covariates). Under what
-conditions will this give an unbiased estimate of the effect of primary seat
-belt laws on fatalities per capita? What are its advantages or disadvantages as
-compared to pooled OLS?**
+**Compute the Random Effects estimator (including covariates). Under what conditions will this give an unbiased estimate of the effect of primary seat belt laws on fatalities per capita? What are its advantages or disadvantages as compared to pooled OLS?**
 
 ```{r}
 reg_3d_RE_bin <- plm(ln_fat_pc ~ primary, 
@@ -618,18 +600,29 @@ stargazer(reg_3d_RE_bin, reg_3d_RE_tf, reg_3d_RE_covtf, reg_3d_pooled_bin, reg_3
           type = "text", digits = 4)
 ```
 
-Random Effects model will give unbiased estimates when the strict exogeneity condition and uncorrelated condition are satisfied. 
+Random Effects model will be unbiased when state-level unobserved heterogeneity is uncorrelated with the independent variables. If this were the case, then RE is more efficient than FE. However, as evidenced by 3a, this assumption does not not appear to hold. 
 
+Compared to pooled OLS, random effects assumes that within-state residuals are equally correlated with each other (as opposed to assuming no correlation between them in OLS). Random effects then used these residuals to compute weighted least squares, using the inverse of the variance-covariance matrices as weights. Similar to OLS, RE still assumed that across-state residuals are uncorrelated.
 
-
-
+The advantage of using RE is that it is more efficient than pooled OLS in the case when we have reason to think that states have exist time-invariant unobserved characteristics (which islikely the case here). However, when we think those unobservables are correlated with the independent variables, we would be better off using FE.
 
 ## Part (e)
-**Do you think the standard errors from RE are right? Compute the clustered
-standard errors. Are they substantially different? If so, why? (i.e., what
-assumption(s) are being violated?)**
+**Do you think the standard errors from RE are right? Compute the clustered standard errors. Are they substantially different? If so, why? (i.e., what assumption(s) are being violated?)**
 
+```{r 3e Clustered SE (Canned)}
+reg3b_1_cluster <- coeftest(reg3a_1, vcov = vcovCL, cluster = ~state)
+reg3b_2_cluster <- coeftest(reg3a_2_p, vcov = vcovHC(reg3a_2_p, type = "HC0", cluster = "group"))
+reg3b_3_cluster <- coeftest(reg3a_3, vcov = vcovHC(reg3a_3, type = "HC0", cluster = "group"))
 
+stargazer(reg3a_1, reg3b_1_cluster, reg3a_2_p, reg3b_2_cluster, reg3a_3, reg3b_3_cluster,
+          title = "Regression with Clustered SE",
+          dep.var.caption = "Log(Fatality per Population)",
+          dep.var.labels.include = FALSE, model.names = FALSE,
+          column.labels = c("Biv", "Biv(Cluster)", "Yr FE", "Yr FE(Cluster)", "Ctr/Yr FE", "Ctr/Yr FE(Cluster)"),
+          keep = "primary",
+          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
+          type = "text", digits = 4)
+```
 
 ## Part (f)
 **Compute the FE estimator using only primary and year fixed effects as the
