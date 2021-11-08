@@ -48,6 +48,7 @@ library(ggplot2)
 library(gridExtra)
 library(grid)
 library(gtable)
+library(tinytex)
 ```
 
 
@@ -249,9 +250,8 @@ explanation for why.**
 \edddot = e_{it} - \overline{e_{t}} - \overline{e_{i}} + \overline{e}
 \intertext{We get that}
 \ydddot = \xdddot\beta + \edddot
+\intertext{Intuitively, the order of the transformations is unimportant because in the end, were still manage to difference out the individual and time effects. There is nothing particular to individual or time effects that would warrant removal in any particular order.}
 \end{align*}
-
-
 
 ## Part (c)
 **Does your answer to part (a) change if the panel becomes unbalanced (i.e.,
@@ -280,10 +280,29 @@ data = read_dta('traffic_safety2.dta') %>%
 
 
 ## Part (a)
-**Run pooled bivariate OLS. Interpret. Add year fixed effects. Interpret. Add
-all covariates that you believe are appropriate. Think carefully about which
-covariates should be log transformed and which should enter in levels. What
-happens when you add these covariates? Why?**
+**Run pooled bivariate OLS. Interpret. Add year fixed effects. Interpret. Add all covariates that you believe are appropriate. Think carefully about which covariates should be log transformed and which should enter in levels. What happens when you add these covariates? Why?**
+
+```{r Bivariate OLS}
+df <- df %>%
+        mutate(fat_pc = fatalities/population, 
+               ln_fat_pc = log(fat_pc),
+               ln_tvmt_pc = log(totalvmt/population))
+
+reg3a_1 <- lm(ln_fat_pc ~ primary, data = df)
+summary(reg3a_1)
+stargazer(reg3a_1, type = "text")
+```
+
+```{r OLS with year fixed effects}
+reg3a_2 <- lm(ln_fat_pc ~ primary + factor(year), data = df)
+stargazer(reg3a_2, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
+
+df.p <- pdata.frame(df, index = c("state", "year")) #declaring panel dataset
+reg3a_2_p <- plm(ln_fat_pc ~ primary, data = df.p, effect = "time", model = "within") #checking reg3a_2
+stargazer(reg3a_2_p, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
+```
+
+
 
 total vehicle miles traveled per capita: logged because, after using per capita
 variables, we think the increase in fatalities per capita would be proportional
@@ -300,7 +319,7 @@ Log precip because we car about percentage-point deviation from the norm. Don't 
 
 When we add the covariates, the estimated effect on primary switches from significantly negative to insignificantly positive. Since we haven't yet controlled for state-level fixed effects, this could be from trying to compare states that have similar observable covariates that adopt primary safety belt laws at different times, but may have significant reasons for adopting when they did, and thus may have significant unobserved factors that are correlated with the primary safety belt law being in place.
 
-```{r 3.a regressions}
+```{r OLS with controls and year fixed effects}
 # Bivariate with lm
 reg_a_bivariate_lm = lm(log(fatal_per_cap) ~ primary , data = data)
 # Bivariate with plm
@@ -338,7 +357,34 @@ reg_a_full_plm = plm(log(fatal_per_cap) ~ primary + factor(year) + college + bee
 stargazer(reg_a_bivariate_plm, reg_a_yfe_plm, reg_a_full_plm, type='text')
 ```
 
+```{r 3a table, results='asis'}
+reg3a_3 <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy 
+               + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed, 
+               data = df.p, effect = "time", model = "within")
+stargazer(reg3a_3, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
 
+reg3a_3.1 <- plm(ln_fat_pc ~ primary + college + beer + unemploy 
+               + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed, 
+               data = df.p, effect = "time", model = "within")
+stargazer(reg3a_3.1, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
+
+# with state fixed effects as well
+reg3a_3.2 <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy 
+               + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed + factor(state), 
+               data = df.p, effect = "time", model = "within")
+stargazer(reg3a_3.2, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
+
+reg3a_3.3 <- plm(ln_fat_pc ~ primary + college + beer + unemploy 
+               + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed + factor(state), 
+               data = df.p, effect = "time", model = "within")
+stargazer(reg3a_3.3, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
+```
+
+We included covariates that we believe to be correlated (both statistically and theoretically) with both the outcome (log fatalities per capita) and the treatment variable (primary). This includes weather variables, education, beer, unemployment, speed limits, and tvmt. Since tvmt is a level variable, we thought it best to divide it by population and take its log. We included "secondary" in one of the regressions to identify the marginal effect of having a primary seatbelt law in addition to the secondary one where that is already in place. 
+
+Including these covariates drastically changes our point estimate. When the covariates other than secondary are include, the effect essentially disappears though remains negative. This is due to the fact that variation in fatalities per capita that we previously attributed to "primary" in the OLS regression without covariates is actually attributable to these other characteristics. Furthermore, once secondary is included, the effect remains insignificant but turns positive. If this is actually a true zero, then this could be because the secondary policy already prevents fatalities. If this is a true positive (we are less convinced), then it could be that the primary policy causes people to take less responsibility of one's own actions and depend on law enforcement. Laws can cause rebellion from teens and also unintentiolly shift responsibility from the citizen to the government.
+
+In addition, it is worth noting that when adding state fixed effects, the coefficient on primary becomes negative and significant, even with and without controling for "secondary." In fact, it is even more negative when controlling for "secondary." This, to us, seems to identify the treatment effect since it controls for any intrinsic state characteristics that were not included and could have cause omitted variable bias.
 
 
 ## Part (b)
@@ -350,6 +396,66 @@ cluster(state)"). Do this using both the "canned" command and manually using the
 formulas we learned in class. Do the standard errors change much? Are you
 surprised? Interpret.**
 
+Standard errors from specifications in part (a) is likely incorrect given we have potential correlation across observations from same state.
+
+```{r 3b Robust SE}
+reg3b_1_robust <- coeftest(reg3a_1, vcov = vcovHC(reg3a_1, method = "white1", type = "HC0"))
+reg3b_2_robust <- coeftest(reg3a_2_p, vcov = vcovHC(reg3a_2_p, method = "white1", type = "HC0"))
+reg3b_3_robust <- coeftest(reg3a_3, vcov = vcovHC(reg3a_3, method = "white1", type = "HC0"))
+
+stargazer(reg3a_1, reg3b_1_robust, reg3a_2_p, reg3b_2_robust, reg3a_3, reg3b_3_robust,
+          title = "Regression with Robust SE",
+          dep.var.caption = "Log(Fatality per Population)",
+          dep.var.labels.include = FALSE, model.names = FALSE,
+          column.labels = c("Biv", "Biv(Robust)", "Yr FE", "Yr FE(Robust)", "Ctr/Yr FE", "Ctr/Yr FE(Robust)"),
+          keep = "primary",
+          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
+          type = "text", digits = 4)
+```
+
+We observe that for simple bivariate regression and spepcification with only year fixed effects, robust standards are slightly larger. In model with controls and time fixed effects, robust standard errors are slightly smaller.
+
+```{r 3b Clustered SE (Canned)}
+reg3b_1_cluster <- coeftest(reg3a_1, vcov = vcovCL, cluster = ~state)
+reg3b_2_cluster <- coeftest(reg3a_2_p, vcov = vcovHC(reg3a_2_p, type = "HC0", cluster = "group"))
+reg3b_3_cluster <- coeftest(reg3a_3, vcov = vcovHC(reg3a_3, type = "HC0", cluster = "group"))
+
+stargazer(reg3a_1, reg3b_1_cluster, reg3a_2_p, reg3b_2_cluster, reg3a_3, reg3b_3_cluster,
+          title = "Regression with Clustered SE",
+          dep.var.caption = "Log(Fatality per Population)",
+          dep.var.labels.include = FALSE, model.names = FALSE,
+          column.labels = c("Biv", "Biv(Cluster)", "Yr FE", "Yr FE(Cluster)", "Ctr/Yr FE", "Ctr/Yr FE(Cluster)"),
+          keep = "primary",
+          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
+          type = "text", digits = 4)
+```
+
+
+```{r 3b Clustered SE (Manual Calculation)}
+# Manually Calculate Clustered SE for Bivariate OLS
+Y_a <- df[,"ln_fat_pc"] %>%
+          as.matrix() #1104 x 1
+
+X_a <- df[,"primary"] %>% 
+          mutate(cons = 1) %>%
+          select(cons, primary) %>%
+          as.matrix() #1104 x 2
+
+XX_inv <- solve(t(X_a) %*% X_a) #2 x 2
+
+B_a = XX_inv %*% (t(X_a)%*%Y_a) #2 x 1 # This matches reg3a_1$coefficients
+
+Resid_a <- Y_a - (X_a %*% B_a) #1104 x 1 # This matches reg3a_1$residuals
+
+v2_a <- diag(diag(Resid_a %*% t(Resid_a))) #1104 x 1104
+
+vcov_cluster <- (XX_inv) %*% (t(X_a) %*% v2_a %*% X_a) %*% XX_inv
+
+vcov_cluster[2,2]^0.5
+```
+
+
+We observe that clustered SE are significantly higher than the original as well as robust SE. This suggest that correlation within state over time is seriously biasing our conventional standard errors.
 
 From the below plots of the residuals, we can see that the variance of the
 residuals is not constant along many of our covariates -- especially speed
@@ -424,6 +530,37 @@ conditions will this give an unbiased estimate of the effect of primary seat
 belt laws on fatalities per capita? Do you believe those conditions are met? Are
 you concerned about the standard errors in this case?**
 
+In order for between estimators to be unbiased, individual state time-in-varying effects, which now rests within error term, should not correlated with included 'primary' or other co-variates. I do not think this "uncorrelated effects" condition would hold, given each states' time-invariant characteristics regarding average driving styles or fatality rate would likely impact whether state implements primary and secondary laws as well as driving conditions captured by covariates. With the between estimator, I am worried about SE, given we are down to 48 observations, one for each state, by averaging each state's observation over time.
+
+
+```{r}
+df_within <- df %>% select(-c("state", "year"))
+df_within <- aggregate(df_within, list(df$state), mean)
+
+sapply(df_within, typeof)
+is.numeric(df_within$college)
+
+reg_3c_btw_nocov <- plm(ln_fat_pc ~ primary, 
+                            data = df_within, 
+                            model = "between")
+
+
+reg_3c_btw_nocov
+
+# Is between estimator same as simply including time fixed effects
+#reg_3c_time <- plm(ln_fat_pc ~ primary, 
+#                              data = df, 
+#                              index = c("state", "year"),
+#                              model = "between",
+#                              effects = "time")
+
+reg_3c_btw_cov <- plm(ln_fat_pc ~ primary + secondary + beer + as.numeric(college) + unemploy
+                            + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed,
+                            data = df_within, 
+                            model = "between")
+
+reg_3c_btw_cov
+```
 
 
 ## Part (d)
@@ -432,6 +569,14 @@ conditions will this give an unbiased estimate of the effect of primary seat
 belt laws on fatalities per capita? What are its advantages or disadvantages as
 compared to pooled OLS?**
 
+```{r}
+reg_3d_btw_nocov <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy
+                            + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed,, 
+                            data = df, 
+                            model = "random")
+
+reg_3d_btw_nocov
+```
 
 
 ## Part (e)
