@@ -39,8 +39,15 @@ table_type = "text"
 # Packages
 ```{r packages, results='hide', message=FALSE, echo=T}
 library(tidyverse)
-library(foreign)
+library(haven)
+library(plm)
+library(lmtest)
+library(sandwich)
 library(stargazer)
+library(ggplot2)
+library(gridExtra)
+library(grid)
+library(gtable)
 ```
 
 
@@ -264,8 +271,11 @@ safety belt laws should be proportional to the overall level of fatalities per
 capita).**
 
 
-```{r Load Data, results='hide', eval=F}
-data = read.dta('traffic_safety2.dta')
+```{r Load Data, results='hide', eval=T}
+data = read_dta('traffic_safety2.dta') %>%
+    filter(state != 99) %>%
+    mutate(fatal_per_cap = fatalities / population,
+           vmt_per_cap = totalvmt/population)
 ```
 
 
@@ -274,6 +284,59 @@ data = read.dta('traffic_safety2.dta')
 all covariates that you believe are appropriate. Think carefully about which
 covariates should be log transformed and which should enter in levels. What
 happens when you add these covariates? Why?**
+
+total vehicle miles traveled per capita: logged because, after using per capita
+variables, we think the increase in fatalities per capita would be proportional
+to a percentage point increase in vehicle miles traveled per capita, not
+absolute levels, since the percentage point increase is a better measure of
+deviation from the norm, and drivers are more likely to adjust poorly to a
+deviation from the norm than an absolute increase in vehicle miles traveled
+(since an absolute increase may not be very differnt from the norm in states
+that have relatively large average miles traveled.)
+
+Not inlcuding population because we are using per-capita variables
+
+Log precip because we car about percentage-point deviation from the norm. Don't log snow because it has zeros.
+
+When we add the covariates, the estimated effect on primary switches from significantly negative to insignificantly positive. Since we haven't yet controlled for state-level fixed effects, this could be from trying to compare states that have similar observable covariates that adopt primary safety belt laws at different times, but may have significant reasons for adopting when they did, and thus may have significant unobserved factors that are correlated with the primary safety belt law being in place.
+
+```{r 3.a regressions}
+# Bivariate with lm
+reg_a_bivariate_lm = lm(log(fatal_per_cap) ~ primary , data = data)
+# Bivariate with plm
+reg_a_bivariate_plm = plm(log(fatal_per_cap) ~ primary, 
+                       data = data,
+                       model = "pooling")
+# FE with lm
+reg_a_yfe_lm = lm(log(fatal_per_cap) ~ primary + factor(year), data = data)
+# FE with plm
+reg_a_yfe_plm = plm(log(fatal_per_cap) ~ primary, 
+                data = data,
+                index = c("year"), 
+                model = "within",
+                effect = "individual")
+# FE + covars with lm
+reg_a_full_lm = lm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
+                   + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
+                   + log(rural_speed) + log(urban_speed), data = data)
+# FE + covars with plm
+reg_a_full_plm = plm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
+                     + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
+                     + log(rural_speed) + log(urban_speed), 
+                     data = data,
+                     index = c("state", "year"),  # order matters: unit-var, time-var
+                     model = "within",
+                     effect = "time")  # only do time
+
+
+# Checking in-state variation in rural_speed
+# d = data %>% group_by(state) %>% mutate(rural_speed_dev = abs(rural_speed - mean(rural_speed)), rural_speed_dev_mean = mean(rural_speed_dev))
+# plot(d$state, d$rural_speed_dev_mean)
+```
+
+```{r 3a table, results='asis'}
+stargazer(reg_a_bivariate_plm, reg_a_yfe_plm, reg_a_full_plm, type='text')
+```
 
 
 
@@ -288,6 +351,72 @@ formulas we learned in class. Do the standard errors change much? Are you
 surprised? Interpret.**
 
 
+From the below plots of the residuals, we can see that the variance of the
+residuals is not constant along many of our covariates -- especially speed
+limits, unemployment rates, and snow levels. Heteroskedasticity is an issue we
+need to correct for.
+
+```{r 3.b heteroskedasticity check, echo=F}
+grid.arrange(
+qplot(data$college, resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
+qplot(data$beer, resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
+qplot(data$unemploy, resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
+qplot(log(data$precip), resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
+qplot(data$snow32, resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
+qplot(log(data$rural_speed), resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
+qplot(log(data$urban_speed), resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
+qplot(log(data$vmt_per_cap), resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
+nrow = 4, heights=rep(12,4))
+
+
+#     p1 <- qplot(mpg, wt, data = mtcars, colour = cyl)
+# p2 <- qplot(mpg, data = mtcars) + ggtitle("title")
+# p3 <- qplot(mpg, data = mtcars, geom = "dotplot")
+# p4 <-
+#   p1 + facet_wrap( ~ carb, nrow = 1) + theme(legend.position = "none") +
+#   ggtitle("facetted plot")
+# grid.arrange(p1,p2)
+```
+
+```{r 3.b standard errors bivariate}
+coeftest(reg_a_bivariate_lm, vcov = vcovHC(reg_a_bivariate_lm, method="white1", type="HC0"))
+coeftest(reg_a_bivariate_plm, vcov = vcovHC(reg_a_bivariate_plm, method="white1", type="HC0"))
+
+# by hand
+Sigma = diag(resid(reg_a_bivariate_plm)^2)
+X = model.matrix(~ primary, data = data)
+XpX = t(X)%*%X
+XpXinv = solve(XpX)
+XpSigmaX = t(X)%*%Sigma%*%X
+var_b = XpXinv %*% XpSigmaX %*% XpXinv
+SE_b = sqrt(diag(var_b))
+SE_b
+```
+```{r 3.b standard errors year FE}
+library(lmtest)
+library(sandwich)
+coeftest(reg_a_yfe_lm, vcov = vcovHC(reg_a_yfe_lm, method="white1", type="HC0"))[[2]]
+coeftest(reg_a_yfe_plm, vcov = vcovHC(reg_a_yfe_plm, method="white1", type="HC0"))
+
+# by hand
+d_temp = data %>% mutate(resids = resid(reg_a_bivariate_plm))
+k = length(unique(data$year) + 1)
+meat = matrix(0, nrow=k, ncol=k)
+# sum over all years
+# for each year, subset just that year and calc X'(ee')X
+for (y in unique(data$year)) {
+    X = model.matrix(~ primary - 1, data = filter(d_temp, year==y))
+    e = as.matrix(filter(d_temp, year==y) %>% select(resids))
+    meat = meat + t(X)%*% (e%*%t(e)) %*% X
+}
+rm(d_temp)
+
+XpX = t(X)%*%X
+XpXinv = solve(t(X)%*%X)
+var_b = XpXinv %*% meat %*% XpXinv
+SE_b = sqrt(diag(var_b))
+SE_b
+```
 
 ## Part (c)
 **Compute the between estimator, both with and without covariates. Under what
