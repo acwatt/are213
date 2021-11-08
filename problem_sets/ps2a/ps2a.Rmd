@@ -214,7 +214,7 @@ easier to analyze the fixed effects regression using partitioned regression.)**
 \yddot = y_{it} - \overline{y_{i}} = y_{it} - \frac{1}{T}\sumt y_{it} \\
 \implies \yddot = y_{it} - \frac{1}{T}\sumt \left(\alpha + x_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it} \right)
 \intertext{Applying the second within transformation, we get that}
-\ydddot = \yddot - \overline{\yddot} \\
+\ydddot = \yddot - \overline{\ddot y_{t}} \\
 = \yddot - \frac{1}{N} \sumi \yddot \\
 = y_{it} - \overline{y_i} - \overline{y_t} + \overline{y} \\
 = \alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it} \\
@@ -261,6 +261,9 @@ explanation for why.**
 ## Part (c)
 **Does your answer to part (a) change if the panel becomes unbalanced (i.e., contains different numbers of observations for each individual $i$). Why or why not?**
 
+Yes. In a particularly bad case, attrition from the panel may be related to the
+dependent variable and we might get selection bias. However, even with
+completely ignorable attrition, we still need to adjust
 
 
 
@@ -370,17 +373,13 @@ reg_a_full_lm = lm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
                    + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
                    + log(rural_speed) + log(urban_speed), data = data)
 # FE + covars with plm
-reg_a_full_plm = plm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
+reg_a_full_plm = plm(log(fatal_per_cap) ~ primary + college + beer
                      + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
                      + log(rural_speed) + log(urban_speed), 
                      data = data,
                      index = c("state", "year"),  # order matters: unit-var, time-var
                      model = "within",
                      effect = "time")  # only do time
-
-# Checking in-state variation in rural_speed
-# d = data %>% group_by(state) %>% mutate(rural_speed_dev = abs(rural_speed - mean(rural_speed)), rural_speed_dev_mean = mean(rural_speed_dev))
-# plot(d$state, d$rural_speed_dev_mean)
 ```
 
 
@@ -414,9 +413,6 @@ stargazer(reg3a_1, reg3b_1_robust, reg3a_2_p, reg3b_2_robust, reg3a_3, reg3b_3_r
           font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
           type = "text", digits = 4)
 
-
-
-```{r 3b Robust SE (Canned)}
 reg3b_1_cluster <- coeftest(reg3a_1, vcov = vcovCL, cluster = ~state)
 reg3b_2_cluster <- coeftest(reg3a_2_p, vcov = vcovHC(reg3a_2_p, type = "HC0", cluster = "group"))
 reg3b_3_cluster <- coeftest(reg3a_3, vcov = vcovHC(reg3a_3, type = "HC0", cluster = "group"))
@@ -429,10 +425,7 @@ stargazer(reg3a_1, reg3b_1_cluster, reg3a_2_p, reg3b_2_cluster, reg3a_3, reg3b_3
           keep = "primary",
           font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
           type = "text", digits = 4)
-```
 
-
-```{r 3b Robust SE (Manual Calculation)}
 # Manually Calculate Robust SE for Bivariate OLS
 Y_a <- df[,"ln_fat_pc"] %>%
           as.matrix() #1104 x 1
@@ -516,7 +509,7 @@ XpXinv = solve(t(X)%*%X)
 N = length(unique(data$state))
 T_ = length(unique(data$year))
 var_b = XpXinv %*% meat %*% XpXinv * (N*T_ - 1) * T_ / ((N*T_ - k)*(T_ - 1))
-SE_b = sqrt(diag(var_b))
+SE_b3_2 = sqrt(diag(var_b))
 rm(d_temp)
 # Cluster robust standard errors
 SE_b3_2[1]
@@ -620,11 +613,6 @@ stargazer(reg_3c_btw_nocov, reg_3c_btw_cov,
 **Compute the Random Effects estimator (including covariates). Under what conditions will this give an unbiased estimate of the effect of primary seat belt laws on fatalities per capita? What are its advantages or disadvantages as compared to pooled OLS?**
 
 ```{r}
-reg_3d_btw_nocov <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy
-                            + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed,
-                            data = df,
-                            model = "random")
-
 reg_3d_RE_bin <- plm(ln_fat_pc ~ primary, 
                             data = data, 
                             model = "random")
