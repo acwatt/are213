@@ -328,20 +328,6 @@ stargazer(reg3a_3.3, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
 ```
 
 
-total vehicle miles traveled per capita: logged because, after using per capita
-variables, we think the increase in fatalities per capita would be proportional
-to a percentage point increase in vehicle miles traveled per capita, not
-absolute levels, since the percentage point increase is a better measure of
-deviation from the norm, and drivers are more likely to adjust poorly to a
-deviation from the norm than an absolute increase in vehicle miles traveled
-(since an absolute increase may not be very differnt from the norm in states
-that have relatively large average miles traveled.)
-
-Not inlcuding population because we are using per-capita variables
-
-Log precip because we car about percentage-point deviation from the norm. Don't log snow because it has zeros.
-
-When we add the covariates, the estimated effect on primary switches from significantly negative to insignificantly positive. Since we haven't yet controlled for state-level fixed effects, this could be from trying to compare states that have similar observable covariates that adopt primary safety belt laws at different times, but may have significant reasons for adopting when they did, and thus may have significant unobserved factors that are correlated with the primary safety belt law being in place.
 
 ```{r 3a Regressions with Logged Covariates}
 # Bivariate with lm
@@ -380,8 +366,7 @@ reg_a_full_plm = plm(log(fatal_per_cap) ~ primary + factor(year) + college + bee
 stargazer(reg_a_bivariate_plm, reg_a_yfe_plm, reg_a_full_plm, type='text')
 ```
 
-
-We included covariates that we believe to be correlated (both statistically and theoretically) with both the outcome (log fatalities per capita) and the treatment variable (primary). This includes weather variables, education, beer, unemployment, speed limits, and tvmt. Since tvmt is a level variable, we thought it best to divide it by population and take its log. We included "secondary" in one of the regressions to identify the marginal effect of having a primary seatbelt law in addition to the secondary one where that is already in place. 
+We included covariates that we believe to be correlated (both statistically and theoretically) with both the outcome (log fatalities per capita) and the treatment variable (primary). This includes weather variables, education, beer, unemployment, speed limits, and tvmt. Since tvmt is a level variable, we thought it best to divide it by population and take its log. We also logged total vehicle miles traveled per capita because we think the increase in fatalities per capita would be proportional to a percentage point increase in vehicle miles traveled per capita; not absolute levels, since the percentage point increase is a better measure of deviation from the norm, and drivers are more likely to adjust poorly to a deviation from the norm than to an absolute increase in vehicle miles traveled. In addtion, we logged precip because we care about percentage-point deviation from the norm. We did not log snow because it has zeros. Since we used per-capita measures, we did not include population. We included "secondary" in one of the regressions to identify the marginal effect of having a primary seatbelt law in addition to the secondary one where that is already in place. 
 
 Including these covariates drastically changes our point estimate. When the covariates other than secondary are include, the effect essentially disappears though remains negative. This is due to the fact that variation in fatalities per capita that we previously attributed to "primary" in the OLS regression without covariates is actually attributable to these other characteristics. Furthermore, once secondary is included, the effect remains insignificant but turns positive. If this is actually a true zero, then this could be because the secondary policy already prevents fatalities. If this is a true positive (we are less convinced), then it could be that the primary policy causes people to take less responsibility of one's own actions and depend on law enforcement. Laws can cause rebellion from teens and also unintentiolly shift responsibility from the citizen to the government.
 
