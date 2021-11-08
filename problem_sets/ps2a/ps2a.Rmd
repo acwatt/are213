@@ -720,6 +720,9 @@ stargazer(reg3h_1, reg3h_2, reg3h_3,
           type = "text", digits = 4)
 ```
 
+We observe that 1st and 2nd difference estimator give very similar or slightly more negative coefficients estimates, while standard errors go down significantly. Perhaps, this may mean that effect of implementing primary law is more volatile but stabilizes over longer term period. Long term difference estimator has he most negative coefficient. Another key feature to notice is that for long difference estimator, we are taking the difference between the first and last year for each state, and we are left with one observation per state. Hence, thought not on primary variable, most of the standard errors significantly increase.
+
+The fixed effects estimator from earlier parts seems to fall between the first and long differences estimator; however, it is very close to the long difference estimator.
 
 ## Part (i)
 **Make the case that the first-differences estimate is superior to the 5-year or long differences estimates.**
