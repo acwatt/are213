@@ -564,23 +564,11 @@ reg_3d_RE_bin <- plm(ln_fat_pc ~ primary,
                             data = data, 
                             model = "random")
 
-reg_3d_RE_cov <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy, 
-                            data = data, 
-                            model = "random")
-
-reg_3d_RE_tf <- plm(ln_fat_pc ~ primary,
-                            data = data, 
-                            model = "random",
-                            index = c("state", "year"), effect = ("time"))
-
-reg_3d_RE_covtf <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy
+reg_3d_RE_cov <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy
                             + ln_vmt_pc + ln_precip + snow32 + ln_rspeed + ln_uspeed,
                             data = data, 
-                            model = "random",
-                            index = c("state", "year"), effect = ("time"))
+                            model = "random")
   
-summary(reg_3d_RE_covtf)
-                  
 reg_3d_pooled_bin <- plm(ln_fat_pc ~ primary, 
                             data = data, 
                             model = "pooling")
