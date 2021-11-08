@@ -385,6 +385,10 @@ Including these covariates drastically changes our point estimate. When the cova
 In addition, it is worth noting that when adding state fixed effects, the coefficient on primary becomes negative and significant, even with and without controlling for "secondary." In fact, it is even more negative when controlling for "secondary." This, to us, seems to identify the treatment effect since it controls for any intrinsic state characteristics that were not included and could have cause omitted variable bias. However, we are not convinced this is the correct treatment effect since the treatment may be time-varying and these policies were enacted at different times (see section notes 11/1).
 
 
+
+
+
+\newpage
 ## Part (b)
 **Ignore omitted variables bias issues for the moment. Do you think the standard errors from above are right? Compute the Huber-White heteroskedasticity robust standard errors (e.g., ", robust"). Do they change much? Compute the clustered standard errors that are robust to within-state correlation (e.g., ", cluster(state)"). Do this using both the "canned" command and manually using the formulas we learned in class. Do the standard errors change much? Are you surprised? Interpret.**
 
@@ -573,6 +577,12 @@ residuals is not constant along many of our covariates -- especially speed
 limits, unemployment rates, and snow levels. Heteroskedasticity is an issue we
 need to correct for.
 
+
+
+
+
+
+\newpage
 ## Part (c)
 **Compute the between estimator, both with and without covariates. Under what conditions will this give an unbiased estimate of the effect of primary seat belt laws on fatalities per capita? Do you believe those conditions are met? Are you concerned about the standard errors in this case?**
 
@@ -620,6 +630,11 @@ stargazer(reg_3c_btw_nocov, reg_3c_btw_cov,
           digits = 4, type = table_type, header = FALSE)
 ```
 
+
+
+
+
+\newpage
 ## Part (d)
 **Compute the Random Effects estimator (including covariates). Under what conditions will this give an unbiased estimate of the effect of primary seat belt laws on fatalities per capita? What are its advantages or disadvantages as compared to pooled OLS?**
 
@@ -659,6 +674,14 @@ Compared to pooled OLS, random effects assumes that within-state residuals are e
 
 The advantage of using RE is that it is more efficient than pooled OLS in the case when we have reason to think that states have exist time-invariant unobserved characteristics (which islikely the case here). However, when we think those unobservables are correlated with the independent variables, we would be better off using FE.
 
+
+
+
+
+
+
+
+\newpage
 ## Part (e)
 **Do you think the standard errors from RE are right? Compute the clustered standard errors. Are they substantially different? If so, why? (i.e., what assumption(s) are being violated?)**
 
@@ -685,6 +708,13 @@ pdwtest(reg_3d_RE_cov, alternative="two.sided")
 
 The standard errors are different with and without clustering because there exists serial correlation in the error term (as evidenced by the Durbin-Watson test above). Clustered standard errors correct for these estimates.
 
+
+
+
+
+
+
+\newpage
 ## Part (f)
 **Compute the FE estimator using only primary and year fixed effects as the covariates. Compute the normal standard errors and the clustered standard errors. If they are different, why?**
 
@@ -710,6 +740,17 @@ pdwtest(reg_a_yfe_plm, alternative="two.sided")
 
 The estimate of FE with only primary and year FE is computed in 3a. The standard errors are surprisingly similar with and without clustering, though still the SE is larger in the clustered case. The Durbin-Watson test indicates that there is indeed positive autocorrelation and that it is stronger here than under the previous RE model. (Also note that we interpreted the question to be that we were asked to only estimate year FE; not state FE with year FE covariates.)
 
+
+
+
+
+
+
+
+
+
+
+\newpage
 ## Part (g)
 **Add the same range of covariates to the FE estimator that you did to the OLS estimator. Are the FE estimates more or less stable than the OLS estimates? Why?**
 
@@ -732,6 +773,16 @@ stargazer(reg_a_bivariate_lm, reg_g_ols_lm,reg_a_yfe_lm, reg_a_full_lm,
 
 The FE estimates are less stable than the OLS estimates when adding covariates. This is likely due to the fact that the FE estimate without covariates is exploiting variation between states with very different characteristics. Once those characteristics are controlled for with covariates, the effect disappears. On the other hand, OLS is exploiting variation across both time and state. When the covariates are added, it takes some variation away from the state dimension, but is still (perhaps unjustifiably) exploiting the time dimension. 
 
+
+
+
+
+
+
+
+
+
+\newpage
 ## Part (h)
 **Estimate a first-differences estimator, a 5-year differences estimator, and a long differences estimator, including year fixed effects (when feasible) and the appropriate covariates in each case. Briefly describe the pattern that emerges from the three differencing estimates. Where does the FE estimate fall in this pattern? Are you surprised?**
 
@@ -814,6 +865,15 @@ and long differences estimator; however, it is very close to the long difference
 estimator.
 
 
+
+
+
+
+
+
+
+
+\newpage
 ## Part (i)
 **Make the case that the first-differences estimate is superior to
 the 5-year or long differences estimates.**
