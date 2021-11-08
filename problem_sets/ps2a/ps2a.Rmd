@@ -14,6 +14,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = e
 ---
 
 ```{r setup, include=FALSE}
+rm(list=ls())
 knitr::opts_chunk$set(echo = TRUE)
 ```
 <!--
@@ -280,26 +281,51 @@ data = read_dta('traffic_safety2.dta') %>%
 ## Part (a)
 **Run pooled bivariate OLS. Interpret. Add year fixed effects. Interpret. Add all covariates that you believe are appropriate. Think carefully about which covariates should be log transformed and which should enter in levels. What happens when you add these covariates? Why?**
 
-```{r Bivariate OLS}
-df <- df %>%
-        mutate(fat_pc = fatalities/population, 
-               ln_fat_pc = log(fat_pc),
-               ln_tvmt_pc = log(totalvmt/population))
+```{r Bivariate OLS, Time FE, Cov and Time FE, echo = FALSE, eval = FALSE}
+# Bivariate OLS 
+reg3a_1 <- lm(log(fatal_per_cap) ~ primary, data = data)
+reg3a_1_p <- plm(log(fatal_per_cap) ~ primary, data = data, model = "pooling")
 
-reg3a_1 <- lm(ln_fat_pc ~ primary, data = df)
-summary(reg3a_1)
-stargazer(reg3a_1, type = "text")
+# Time FE
+df.p <- pdata.frame(data, index = c("state", "year")) #declaring panel dataset
+reg3a_2 <- lm(log(fatal_per_cap) ~ primary + factor(year), data = data)
+reg3a_2_p <- plm(log(fatal_per_cap) ~ primary, data = df.p, effect = "time", model = "within") #checking reg3a_2
+
+# Time FE and COv
+reg3a_3_p = plm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
+                     + secondary + unemploy + log(vmt_per_cap) + precip + snow32
+                     + rural_speed + urban_speed, 
+                     data = data,
+                     index = c("state", "year"),
+                     model = "within",
+                     effect = "time")
+
+# Make Table (All 3 Models)
+stargazer(reg3a_1_p, reg3a_2_p, reg3a_3_p, type='text')
 ```
 
-```{r OLS with year fixed effects}
-reg3a_2 <- lm(ln_fat_pc ~ primary + factor(year), data = df)
-stargazer(reg3a_2, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
+```{r 3a Irrelvant (Non Logged Covariates), echo = FALSE, eval = FALSE}
+reg3a_3 <- plm(log(fatal_per_cap) ~ primary + secondary + college + beer + unemploy 
+               + log(vmt_per_cap) + precip + snow32 + rural_speed + urban_speed, 
+               data = df.p, effect = "time", model = "within")
+stargazer(reg3a_3, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
 
-df.p <- pdata.frame(df, index = c("state", "year")) #declaring panel dataset
-reg3a_2_p <- plm(ln_fat_pc ~ primary, data = df.p, effect = "time", model = "within") #checking reg3a_2
-stargazer(reg3a_2_p, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
+reg3a_3.1 <- plm(log(fatal_per_cap) ~ primary + college + beer + unemploy 
+               + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed, 
+               data = df.p, effect = "time", model = "within")
+stargazer(reg3a_3.1, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
+
+# with state fixed effects as well
+reg3a_3.2 <- plm(log(fatal_per_cap) ~ primary + secondary + college + beer + unemploy 
+               + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed + factor(state), 
+               data = df.p, effect = "time", model = "within")
+stargazer(reg3a_3.2, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
+
+reg3a_3.3 <- plm(log(fatal_per_cap) ~ primary + college + beer + unemploy 
+               + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed + factor(state), 
+               data = df.p, effect = "time", model = "within")
+stargazer(reg3a_3.3, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
 ```
-
 
 
 total vehicle miles traveled per capita: logged because, after using per capita
@@ -317,7 +343,7 @@ Log precip because we car about percentage-point deviation from the norm. Don't 
 
 When we add the covariates, the estimated effect on primary switches from significantly negative to insignificantly positive. Since we haven't yet controlled for state-level fixed effects, this could be from trying to compare states that have similar observable covariates that adopt primary safety belt laws at different times, but may have significant reasons for adopting when they did, and thus may have significant unobserved factors that are correlated with the primary safety belt law being in place.
 
-```{r OLS with controls and year fixed effects}
+```{r 3a Regressions with Logged Covariates}
 # Bivariate with lm
 reg_a_bivariate_lm = lm(log(fatal_per_cap) ~ primary , data = data)
 # Bivariate with plm
@@ -329,9 +355,9 @@ reg_a_yfe_lm = lm(log(fatal_per_cap) ~ primary + factor(year), data = data)
 # FE with plm
 reg_a_yfe_plm = plm(log(fatal_per_cap) ~ primary, 
                 data = data,
-                index = c("year"), 
+                index = c("state", "year"), 
                 model = "within",
-                effect = "individual")
+                effect = "time")
 # FE + covars with lm
 reg_a_full_lm = lm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
                    + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
@@ -345,38 +371,15 @@ reg_a_full_plm = plm(log(fatal_per_cap) ~ primary + factor(year) + college + bee
                      model = "within",
                      effect = "time")  # only do time
 
-
 # Checking in-state variation in rural_speed
 # d = data %>% group_by(state) %>% mutate(rural_speed_dev = abs(rural_speed - mean(rural_speed)), rural_speed_dev_mean = mean(rural_speed_dev))
 # plot(d$state, d$rural_speed_dev_mean)
 ```
 
-```{r 3a table, results='asis'}
+```{r 3a Logged Version Table, results='asis'}
 stargazer(reg_a_bivariate_plm, reg_a_yfe_plm, reg_a_full_plm, type='text')
 ```
 
-```{r 3a table, results='asis'}
-reg3a_3 <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy 
-               + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed, 
-               data = df.p, effect = "time", model = "within")
-stargazer(reg3a_3, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
-
-reg3a_3.1 <- plm(ln_fat_pc ~ primary + college + beer + unemploy 
-               + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed, 
-               data = df.p, effect = "time", model = "within")
-stargazer(reg3a_3.1, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
-
-# with state fixed effects as well
-reg3a_3.2 <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy 
-               + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed + factor(state), 
-               data = df.p, effect = "time", model = "within")
-stargazer(reg3a_3.2, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
-
-reg3a_3.3 <- plm(ln_fat_pc ~ primary + college + beer + unemploy 
-               + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed + factor(state), 
-               data = df.p, effect = "time", model = "within")
-stargazer(reg3a_3.3, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
-```
 
 We included covariates that we believe to be correlated (both statistically and theoretically) with both the outcome (log fatalities per capita) and the treatment variable (primary). This includes weather variables, education, beer, unemployment, speed limits, and tvmt. Since tvmt is a level variable, we thought it best to divide it by population and take its log. We included "secondary" in one of the regressions to identify the marginal effect of having a primary seatbelt law in addition to the secondary one where that is already in place. 
 
@@ -388,9 +391,8 @@ In addition, it is worth noting that when adding state fixed effects, the coeffi
 ## Part (b)
 **Ignore omitted variables bias issues for the moment. Do you think the standard errors from above are right? Compute the Huber-White heteroskedasticity robust standard errors (e.g., ", robust"). Do they change much? Compute the clustered standard errors that are robust to within-state correlation (e.g., ", cluster(state)"). Do this using both the "canned" command and manually using the formulas we learned in class. Do the standard errors change much? Are you surprised? Interpret.**
 
-Standard errors from specifications in part (a) is likely incorrect given we have potential correlation across observations from same state.
-
-```{r 3b Robust SE}
+```{r 3b Irrelevant Robust SE (Non Logged Covariates), echo = FALSE, eval = FALSE}
+# Robust SE (Canned)
 reg3b_1_robust <- coeftest(reg3a_1, vcov = vcovHC(reg3a_1, method = "white1", type = "HC0"))
 reg3b_2_robust <- coeftest(reg3a_2_p, vcov = vcovHC(reg3a_2_p, method = "white1", type = "HC0"))
 reg3b_3_robust <- coeftest(reg3a_3, vcov = vcovHC(reg3a_3, method = "white1", type = "HC0"))
@@ -403,11 +405,22 @@ stargazer(reg3a_1, reg3b_1_robust, reg3a_2_p, reg3b_2_robust, reg3a_3, reg3b_3_r
           keep = "primary",
           font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
           type = "text", digits = 4)
-```
 
-We observe that for simple bivariate regression and spepcification with only year fixed effects, robust standards are slightly larger. In model with controls and time fixed effects, robust standard errors are slightly smaller.
+# Manual Robust SE (Bivariate)
+Y_a <- df[,"ln_fat_pc"] %>%
+          as.matrix() #1104 x 1
+X_a <- df[,"primary"] %>% 
+          mutate(cons = 1) %>%
+          select(cons, primary) %>%
+          as.matrix() #1104 x 2
+XX_inv <- solve(t(X_a) %*% X_a) #2 x 2
+B_a = XX_inv %*% (t(X_a)%*%Y_a) #2 x 1 # This matches reg3a_1$coefficients
+Resid_a <- Y_a - (X_a %*% B_a) #1104 x 1 # This matches reg3a_1$residuals
+v2_a <- diag(diag(Resid_a %*% t(Resid_a))) #1104 x 1104
+vcov_cluster <- (XX_inv) %*% (t(X_a) %*% v2_a %*% X_a) %*% XX_inv
+vcov_cluster[2,2]^0.5
 
-```{r 3b Clustered SE (Canned)}
+# Clustered SE (Canned)
 reg3b_1_cluster <- coeftest(reg3a_1, vcov = vcovCL, cluster = ~state)
 reg3b_2_cluster <- coeftest(reg3a_2_p, vcov = vcovHC(reg3a_2_p, type = "HC0", cluster = "group"))
 reg3b_3_cluster <- coeftest(reg3a_3, vcov = vcovHC(reg3a_3, type = "HC0", cluster = "group"))
@@ -422,37 +435,6 @@ stargazer(reg3a_1, reg3b_1_cluster, reg3a_2_p, reg3b_2_cluster, reg3a_3, reg3b_3
           type = "text", digits = 4)
 ```
 
-
-```{r 3b Clustered SE (Manual Calculation)}
-# Manually Calculate Clustered SE for Bivariate OLS
-Y_a <- df[,"ln_fat_pc"] %>%
-          as.matrix() #1104 x 1
-
-X_a <- df[,"primary"] %>% 
-          mutate(cons = 1) %>%
-          select(cons, primary) %>%
-          as.matrix() #1104 x 2
-
-XX_inv <- solve(t(X_a) %*% X_a) #2 x 2
-
-B_a = XX_inv %*% (t(X_a)%*%Y_a) #2 x 1 # This matches reg3a_1$coefficients
-
-Resid_a <- Y_a - (X_a %*% B_a) #1104 x 1 # This matches reg3a_1$residuals
-
-v2_a <- diag(diag(Resid_a %*% t(Resid_a))) #1104 x 1104
-
-vcov_cluster <- (XX_inv) %*% (t(X_a) %*% v2_a %*% X_a) %*% XX_inv
-
-vcov_cluster[2,2]^0.5
-```
-
-
-We observe that clustered SE are significantly higher than the original as well as robust SE. This suggest that correlation within state over time is seriously biasing our conventional standard errors.
-
-From the below plots of the residuals, we can see that the variance of the
-residuals is not constant along many of our covariates -- especially speed
-limits, unemployment rates, and snow levels. Heteroskedasticity is an issue we
-need to correct for.
 
 ```{r 3.b heteroskedasticity check, echo=F}
 grid.arrange(
@@ -515,6 +497,17 @@ var_b = XpXinv %*% meat %*% XpXinv
 SE_b = sqrt(diag(var_b))
 SE_b
 ```
+
+Standard errors from specifications in part (a) is likely incorrect given we have potential correlation across observations from same state.
+
+We observe that for simple bivariate regression and spepcification with only year fixed effects, robust standards are slightly larger. In model with controls and time fixed effects, robust standard errors are slightly smaller.
+
+We observe that clustered SE are significantly higher than the original as well as robust SE. This suggest that correlation within state over time is seriously biasing our conventional standard errors.
+
+From the below plots of the residuals, we can see that the variance of the
+residuals is not constant along many of our covariates -- especially speed
+limits, unemployment rates, and snow levels. Heteroskedasticity is an issue we
+need to correct for.
 
 ## Part (c)
 **Compute the between estimator, both with and without covariates. Under what conditions will this give an unbiased estimate of the effect of primary seat belt laws on fatalities per capita? Do you believe those conditions are met? Are you concerned about the standard errors in this case?**
@@ -580,7 +573,9 @@ reg_3d_RE_covtf <- plm(ln_fat_pc ~ primary + secondary + college + beer + unempl
                             data = df, 
                             model = "random",
                             index = c("state", "year"), effect = ("time"))
-                    
+  
+summary(reg_3d_RE_covtf)
+                  
 reg_3d_pooled_bin <- plm(ln_fat_pc ~ primary, 
                             data = df, 
                             model = "pooling")
