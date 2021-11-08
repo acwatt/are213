@@ -709,12 +709,29 @@ stargazer(reg_a_yfe_plm, reg_a_yfe_plm_cluster,
 pdwtest(reg_a_yfe_plm, alternative="two.sided")
 ```
 
-The estimate of FE with only primary and year FE is computed in 3a. The standard errors are surprisingly similar with and without clustering, though still the SE is larger in the clustered case. The Durbin-Watson test indicates that there is indeed positive autocorrelation and that it is stronger here than under the previous RE model.
+The estimate of FE with only primary and year FE is computed in 3a. The standard errors are surprisingly similar with and without clustering, though still the SE is larger in the clustered case. The Durbin-Watson test indicates that there is indeed positive autocorrelation and that it is stronger here than under the previous RE model. (Also note that we interpreted the question to be that we were asked to only estimate year FE; not state FE with year FE covariates.)
 
 ## Part (g)
 **Add the same range of covariates to the FE estimator that you did to the OLS estimator. Are the FE estimates more or less stable than the OLS estimates? Why?**
 
+```{r 3g}
+# OLS + covars with lm
+reg_g_ols_lm = lm(log(fatal_per_cap) ~ primary + college + beer
+                        + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
+                   + log(rural_speed) + log(urban_speed), data = data)
 
+stargazer(reg_a_bivariate_lm, reg_g_ols_lm,reg_a_yfe_lm, reg_a_full_lm,
+          title = "OLS and FE with covariates",
+          dep.var.caption = "Log(Fatality per Population)",
+          dep.var.labels.include = FALSE, model.names = FALSE,
+          column.labels = c("OLS", "OLS", "FE", "FE"),
+          keep = "primary",
+          add.lines=list(c('Covariates', 'No', 'Yes', 'No', 'Yes')),
+          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
+          type = "text", digits = 4)
+```
+
+The FE estimates are less stable than the OLS estimates when adding covariates. This is likely due to the fact that the FE estimate without covariates is exploiting variation between states with very different characteristics. Once those characteristics are controlled for with covariates, the effect disappears. On the other hand, OLS is exploiting variation across both time and state. When the covariates are added, it takes some variation away from the state dimension, but is still (perhaps unjustifiably) exploiting the time dimension. 
 
 ## Part (h)
 **Estimate a first-differences estimator, a 5-year differences estimator, and a long differences estimator, including year fixed effects (when feasible) and the appropriate covariates in each case. Briefly describe the pattern that emerges from the three differencing estimates. Where does the FE estimate fall in this pattern? Are you surprised?**
