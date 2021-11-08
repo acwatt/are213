@@ -718,7 +718,6 @@ stargazer(reg3h_1, reg3h_2, reg3h_3,
           add.lines=list(c('Time FE', 'Yes', 'Yes', 'No')),
           font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
           type = "text", digits = 4)
-
 ```
 
 
