@@ -629,37 +629,45 @@ pdwtest(reg_3d_RE_cov, alternative="two.sided")
 The standard errors are different with and without clustering because there exists serial correlation in the error term (as evidenced by the Durbin-Watson test above). Clustered standard errors correct for these estimates.
 
 ## Part (f)
-**Compute the FE estimator using only primary and year fixed effects as the
-covariates. Compute the normal standard errors and the clustered standard
-errors. If they are different, why?**
+**Compute the FE estimator using only primary and year fixed effects as the covariates. Compute the normal standard errors and the clustered standard errors. If they are different, why?**
 
+```{r 3f Clustered SE (Canned)}
+reg3a_2_cluster <- coeftest(reg3a_2, vcov = vcovHC(reg3a_2, type = "HC0", cluster = "group"))
 
+stargazer(reg3a_2, reg3a_2_cluster,
+          title = "FE with Clustered SE",
+          dep.var.caption = "Log(Fatality per Population)",
+          dep.var.labels.include = FALSE, model.names = FALSE,
+          column.labels = c("FE", "FE(Cluster)"),
+          keep = "primary",
+          add.lines=list(c('Covariates', 'No', 'No')),
+          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
+          type = "text", digits = 4)
+
+# Test for serial correlation
+# serialCorrelationTest(reg_3d_RE_cov, test = "rank.von.Neumann", 
+#     alternative = "two.sided", conf.level = 0.95) 
+
+pdwtest(reg3a_2, alternative="two.sided")
+```
 
 ## Part (g)
-**Add the same range of covariates to the FE estimator that you did to the OLS
-estimator. Are the FE estimates more or less stable than the OLS estimates?
-Why?**
+**Add the same range of covariates to the FE estimator that you did to the OLS estimator. Are the FE estimates more or less stable than the OLS estimates? Why?**
 
 
 
 ## Part (h)
-**Estimate a first-differences estimator, a 5-year differences estimator, and a
-long differences estimator, including year fixed effects (when feasible) and the
-appropriate covariates in each case. Briefly describe the pattern that emerges
-from the three differencing estimates. Where does the FE estimate fall in this
-pattern? Are you surprised?**
+**Estimate a first-differences estimator, a 5-year differences estimator, and a long differences estimator, including year fixed effects (when feasible) and the appropriate covariates in each case. Briefly describe the pattern that emerges from the three differencing estimates. Where does the FE estimate fall in this pattern? Are you surprised?**
 
 
 
 ## Part (i)
-**Make the case that the first-differences estimate is superior to the 5-year or
-long differences estimates.**
+**Make the case that the first-differences estimate is superior to the 5-year or long differences estimates.**
 
 
 
 ## Part (j)
-**Make the case that the 5-year or long differences estimates are superior to
-the first-differences estimate.**
+**Make the case that the 5-year or long differences estimates are superior to the first-differences estimate.**
 
 
 
