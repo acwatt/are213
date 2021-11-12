@@ -15,7 +15,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = e
 
 ```{r setup, include=FALSE}
 rm(list=ls())
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = F)
 ```
 <!--
 R version 3.6.3 (2020-02-29)
@@ -28,17 +28,17 @@ to the ps2b/ folder
 \usepackage{dcolumn}: dcolumn is needed in latex compilation for multicolumn tables
 -->
 
-```{r Settings, echo=FALSE}
+```{r Settings}
 # stargazer table type (html, latex, or text)
 # Change to latex when outputting to PDF, html when outputting to html
 table_type = "latex"
+
 ```
 
 
 
 
-# Packages
-```{r packages, results='hide', message=F, echo=T}
+```{r packages, include=F}
 # install.packages("Synth")
 library(tidyverse)
 library(haven)
@@ -54,6 +54,8 @@ library(Synth)
 # library(gtable)
 # library(fastDummies)
 # library(EnvStats)
+
+
 ```
 
 
@@ -71,7 +73,8 @@ possible value of event time in the data set. Estimate an event study regression
 using all the event time indicators. What happens?**
 
 
-```{r Load Data, inlcude=F, eval=T}
+```{r Load Data, eval=T}
+# Load data from PS2a with previous log variables
 data = read_dta('traffic_safety2.dta') %>%
     mutate(fat_pc = fatalities/population,
            ln_fat_pc = log(fat_pc),
@@ -79,8 +82,13 @@ data = read_dta('traffic_safety2.dta') %>%
            ln_precip = log(precip),
            ln_rspeed = log(rural_speed), 
            ln_uspeed = log(urban_speed))
+
 ```
 
+Let's determine the event time values
+```{r Determine event time values}
+#heres a chunk
+```
 
 
 
@@ -434,6 +442,43 @@ treatment was significant? Why or why not?**
 ## Part (d)
 **How do your synthetic control results compare to your fixed effects results
 from Question (3) in the last problem set? Interpret any differences.**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
+# Appendix A: R Code
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
