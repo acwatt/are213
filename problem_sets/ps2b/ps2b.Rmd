@@ -38,7 +38,7 @@ table_type = "latex"
 
 
 # Packages
-```{r packages, results='hide', message=FALSE, echo=T}
+```{r packages, results='hide', message=F, echo=T}
 # install.packages("Synth")
 library(tidyverse)
 library(haven)
@@ -70,6 +70,16 @@ estimate in this data set. Code up a separate event time indicator for each
 possible value of event time in the data set. Estimate an event study regression
 using all the event time indicators. What happens?**
 
+
+```{r Load Data, inlcude=F, eval=T}
+data = read_dta('traffic_safety2.dta') %>%
+    mutate(fat_pc = fatalities/population,
+           ln_fat_pc = log(fat_pc),
+           ln_tvmt_pc = log(totalvmt/population),
+           ln_precip = log(precip),
+           ln_rspeed = log(rural_speed), 
+           ln_uspeed = log(urban_speed))
+```
 
 
 
