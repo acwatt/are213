@@ -17,7 +17,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = e
 rm(list=ls())
 knitr::opts_chunk$set(echo = TRUE)
 ```
-<!--test
+<!--
 R version 3.6.3 (2020-02-29)
 Purpose of script: run code necessary for ps2b for ARE 213
 
