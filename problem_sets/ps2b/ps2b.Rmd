@@ -39,11 +39,13 @@ table_type = "latex"
 
 # Packages
 ```{r packages, results='hide', message=FALSE, echo=T}
+# install.packages("Synth")
 library(tidyverse)
 library(haven)
 library(stargazer)
 library(ggplot2)
 library(tinytex)
+library(Synth)
 # library(plm)
 # library(lmtest)
 # library(sandwich)
@@ -60,329 +62,25 @@ library(tinytex)
 <!--=========================================================================-->
 # Problem 1
 <!--=========================================================================-->
-**Question 10.3 from Wooldridge: For $T = 2$ consider the standard unobserved
-effects model:**
-
-\begin{equation}
-y_{it} = \alpha + x_{it}\beta + c_i + u_{it}
-\label{eq:1}
-\end{equation}
-
-\def\bfe{\hat\beta_{FE}}
-\def\bfd{\hat\beta_{FD}}
-\def\dxit{\Delta X_{it}}
-\def\dxi{\Delta X_i}
-\def\uxit{\ddot X_{it}}
-\def\dyit{\Delta y_{it}}
-\def\dyi{\Delta y_i}
-\def\uyit{\ddot y_{it}}
-\def\sumi{\sum\limits_i}
-\def\sumt{\sum\limits_t}
-\def\sumit{\sumi\sumt}
-\def\lp{\left(}
-\def\rp{\right)}
-
-**Let $\bfe$ and $\bfd$ represent the fixed effects and first
-differences estimators respectively.**
+**We first estimate an event study specification.**
 
 ## Part (a)
-**Show that $\bfe$ and $\bfd$ are numerically identical. Hint: it may
-be easier to write $\bfe$ as the “within estimator” rather than the
-fixed effects estimator.**
-
-\begin{align*}
-\intertext{Writing $\bfe$ as the within estimator, $\bfe$ and $\bfd$ are given by}
-\bfd &= \left(\Delta X'\Delta X\right)^{-1}\left(\Delta X'\Delta y\right) 
-\qquad\text{and}\qquad 
-\bfe = \left(\ddot X'\ddot X\right)^{-1}\left(\ddot X'\ddot y\right)\\
-\intertext{Expanding the inner products, we have}
-\bfd &= \left(\sumit\dxit'\dxit\right)^{-1}\left(\sumit\dxit'\dyit\right)
-\intertext{and} 
-\bfe &= \left(\sumit\uxit'\uxit\right)^{-1}\left(\sumit\uxit'\uyit\right)\\
-\intertext{Since there are only two periods, $\bfd$ simplifies to}
-\bfd &= \left(\sumi\dxi'\dxi\right)^{-1}\left(\sumi\dxi'\dyi\right)  \\
-\intertext{where} \dxi &\equiv X_{i2} - X_{i1} 
-\qquad\text{and}\qquad 
-\dyi \equiv y_{i2} - y_{i1} \\
-\intertext{Now we note that}
-\ddot X_{i1} &= X_{i1} - \frac{1}{2}(X_{i1}+X_{i2}) 
-= \frac{1}{2}(X_{i1}-X_{i2}) = -\frac{1}{2}\dxi
-\intertext{and similiarly}
-\ddot X_{i2} &= \frac{1}{2}\dxi, \quad
-\ddot y_{i1} = -\frac{1}{2}\dyi \quad
-\ddot y_{i2} = \frac{1}{2}\dyi \\
-\intertext{Then, $\bfe$ becomes}
-\bfe &= \left(\sumit\uxit'\uxit\right)^{-1}\left(\sumit\uxit'\uyit\right)\\
-&= \left(\sumi\frac{1}{4}\dxi'\dxi + \frac{1}{4}\dxi'\dxi \right)^{-1}
-\left(\sumi\frac{1}{4}\dxi'\dyi + \frac{1}{4}\dxi'\dyi\right)\\
-&= \left(\frac{1}{2}\sumi\dxi'\dxi\right)^{-1}
-\left(\frac{1}{2}\sumi\dxi'\dyi\right)\\
-&= \left(\sumi\dxi'\dxi\right)^{-1}
-\left(\sumi\dxi'\dyi\right)\\
-&= \bfd
-\end{align*}
-
-So $\bfe$ and $\bfd$ are numerically identical.
-
-
-
-\newpage
-## Part (b)
-**Show that the standard errors of $\bfe$ and $\bfd$ are numerically identical.
-If you wish, you may assume that $x_{it}$ is a scalar (i.e. there is only one
-regressor) and ignore any degree of freedom corrections. You are not clustering
-the standard errors in this problem.**
-
-\def\sufe{\hat\sigma_{u,FE}^2}
-\def\sufd{\hat\sigma_{u,FD}^2}
-\def\dui{\widehat{\Delta u}_i}
-\def\uuit{\widehat{\ddot u}_{it}}
-\def\bhat{\hat\beta}
-
-\begin{align*}
-\intertext{The standard errors are estimates of the square root of the asymptotic variances of our estimators, so WLOG, we can compare the asymptotic variances. The asymptotic variances of our estimators are}
-\widehat{Avar(\bfe)} &= \sufe \left(\ddot X'\ddot X\right)^{-1}
-\qquad\text{and}\qquad 
-\widehat{Avar(\bfe)} = \sufd \left(\Delta X'\Delta X\right)^{-1}
-\intertext{where $\sufe$ and $\sufd$ are estimated from the residuals of the corresponding regressions and using the correct degrees of freedom:}
-\sufe &= \frac{\sumit\uuit^2}{N(T-1)-K} = \frac{\sumit\uuit^2}{N-K}
-\qquad\text{and}\qquad
-\sufd = \frac{\sumi\dui^2}{N(T-1)-K} = \frac{\sumi\dui^2}{N-K}
-\intertext{Let $\bhat:=\bfd=\bfe$. Then, from part (a), we can find the relationship between $\dui$ and $\uuit$:}
-\uuit^2 &= (\uyit - \uxit\bhat)^2 \\
-&= \lp(-1)^t \lp\frac{1}{2}\dyi - \frac{1}{2}\dxi\bhat \rp\rp^2 \\
-&= \frac{1}{4}\lp \dyi - \dxi\bhat \rp ^2 \\
-&= \frac{1}{4}\dui^2
-\intertext{So the estimated error variances are related by}
-\sufe &= \frac{\sumit\uuit^2}{N-K} \\
-&= \frac{\sumit\frac{1}{4}\dui^2}{N-K} \\
-&= \frac{\sumi\frac{1}{2}\dui^2}{N-K} \\
-&= \frac{1}{2}\frac{\sumi\dui^2}{N-K} \\
-&= \frac{1}{2}\sufd \\
-\intertext{We know from part (a) that}
-\lp\sumit\uxit'\uxit\rp^{-1} &= \lp\frac{1}{2}\sumi\dxi'\dxi\rp^{-1} \\
-&= 2\lp \sumi\dxi'\dxi \rp^{-1}
-\intertext{And putting all these together, we have}
-\widehat{Avar(\bfe)} &= \sufe \lp \ddot X'\ddot X \rp^{-1} \\
-&= \frac{1}{2}\sufd 2\lp \sumi\dxi'\dxi \rp^{-1} \\
-&= \sufd \lp \sumi\dxi'\dxi \rp^{-1} \\
-&= \widehat{Avar(\bfe)}
-\end{align*}
-Because the estimates of the asymptotic variances are equal, the standard errors (the square roots) will be equal.
+**First determine the minimum and maximum event time values that you can
+estimate in this data set. Code up a separate event time indicator for each
+possible value of event time in the data set. Estimate an event study regression
+using all the event time indicators. What happens?**
 
 
 
 
 
-\newpage
-<!--=========================================================================-->
-# Problem 2
-<!--=========================================================================-->
-**Question 21-3 from Cameron-Trivedi (enhanced): Consider the fixed
-effects, two-way error component panel data model:**
-
-\begin{equation}
-y_{it} = \alpha + x_{it}\beta + \mu_i + \lambda_t + \epsilon_{it}
-\label{eq:2}
-\end{equation}
-
-## Part (a)
-**Show that the fixed effects estimator of $\beta$ can be obtained by applying
-two within (one-way) transformations on this model. The first is the within
-transformation ignoring the time effects followed by the within transformation
-ignoring the individual effects. Assume the panel is balanced. (Hint: it may be
-easier to analyze the fixed effects regression using partitioned regression.)**
-
-\def\xddot{\ddot x_{it}}
-\def\yddot{\ddot y_{it}}
-\def\eddot{\ddot e_{it}}
-
-\def\xdddot{\dddot x_{it}}
-\def\ydddot{\dddot y_{it}}
-\def\edddot{\dddot e_{it}}
-
-\def\sumi{\sum\limits_i}
-\def\sumt{\sum\limits_t}
-\def\sumit{\sumi\sumt}
-
-\begin{align*}
-\intertext{We want to show that} 
-\ydddot = \xdddot\beta + \edddot
-\intertext{Ignoring time effects, we get}
-\yddot = y_{it} - \overline{y_{i}} = y_{it} - \frac{1}{T}\sumt y_{it} \\
-\implies \yddot = y_{it} - \frac{1}{T}\sumt \left(\alpha + x_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it} \right)
-\intertext{Applying the second within transformation, we get that}
-\ydddot = \yddot - \overline{\ddot y_{t}} \\
-= \yddot - \frac{1}{N} \sumi \yddot \\
-= y_{it} - \overline{y_i} - \overline{y_t} + \overline{y} \\
-= \alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it} \\
-- \left(\frac{1}{T} \sumt (\alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it})\right) \\
-- \left(\frac{1}{N} \sumi (\alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it})\right) \\
-+ \left(\frac{1}{NT} \sumit (\alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it})\right) \\ 
-= \beta \left(x_{it} - \overline{x_{i}} - \overline{x_{t}} + \overline{x}\right) + \epsilon_{it} - \overline{\epsilon_{i}} - \overline{\epsilon_{t}} + \overline{\epsilon} \intertext{Since} 
-\xdddot = x_{it} - \overline{x_{i}} - \overline{x_{t}} + \overline{x} 
-\intertext{and}
-\edddot = e_{it} - \overline{e_{i}} - \overline{e_{t}} + \overline{e}
-\intertext{We get that}
-\ydddot = \xdddot\beta + \edddot
-\end{align*}
-
-
-## Part (b)
-**Show that the order of the transformations is unimportant. Give an intuitive
-explanation for why.**
-
-\begin{align*}
-\intertext{Reversing the order, we can show that we get the same result}
-\intertext{Again, we want to show that} 
-\ydddot = \xdddot\beta + \edddot
-\intertext{Ignoring individual effects, we get}
-\yddot = y_{it} - \overline{y_{t}} = y_{it} - \frac{1}{N}\sumi y_{it} \\
-\implies \yddot = y_{it} - \frac{1}{N}\sumi \left(\alpha + x_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it} \right)
-\intertext{Applying the second within transformation, we get that}
-\ydddot = \yddot - \overline{\yddot} \\
-= \yddot - \frac{1}{T} \sumi \yddot \\
-= y_{it} - \overline{y_t} - \overline{y_i} + \overline{y} \\
-= \alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it} \\
-- \left(\frac{1}{N} \sumi (\alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it})\right) \\
-- \left(\frac{1}{T} \sumt (\alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it})\right) \\
-+ \left(\frac{1}{NT} \sumit (\alpha + X_{it}\beta + \mu_{i} + \lambda_{t} + \epsilon_{it})\right) \\ 
-= \beta \left(x_{it} - \overline{x_{t}} - \overline{x_{i}} + \overline{x}\right) + \epsilon_{it} - \overline{\epsilon_{t}} - \overline{\epsilon_{i}} + \overline{\epsilon} \intertext{Since} 
-\xdddot = x_{it} - \overline{x_{t}} - \overline{x_{i}} + \overline{x} 
-\intertext{and}
-\edddot = e_{it} - \overline{e_{t}} - \overline{e_{i}} + \overline{e}
-\intertext{We get that}
-\ydddot = \xdddot\beta + \edddot
-\intertext{Intuitively, the order of the transformations is unimportant because
-in the end, were still manage to difference out the individual and time effects.
-There is nothing particular to individual or time effects that would warrant
-removal in any particular order.}
-\end{align*}
-
-## Part (c)
-**Does your answer to part (a) change if the panel becomes unbalanced (i.e.,
-contains different numbers of observations for each individual $i$). Why or why
-not?**
-
-Yes -- attrition from the panel may be related to the dependent variable and we
-might get selection bias. To address selection bias caused by non-ignorable
-attrition, we would need to weight by the inverse propensity score.
 
 
 
-\newpage
-<!--=========================================================================-->
-# Problem 3
-<!--=========================================================================-->
-**We now begin with an actual analysis of the data. The goal here is to determine what effect, if any, primary belt laws have on the log of traffic fatalities per capita (we log the LHS variable because we believe the effect of safety belt laws should be proportional to the overall level of fatalities per capita).**
-
-
-```{r Load Data, results='hide', eval=T}
-data = read_dta('traffic_safety2.dta') %>%
-    filter(state != 99) %>%
-    mutate(fatal_per_cap = fatalities / population,
-           vmt_per_cap = totalvmt/population)
-```
-
-
-## Part (a)
-**Run pooled bivariate OLS. Interpret. Add year fixed effects. Interpret. Add all covariates that you believe are appropriate. Think carefully about which covariates should be log transformed and which should enter in levels. What happens when you add these covariates? Why?**
-
-
-```{r Bivariate OLS + Time FE + Cov and Time FE, echo = FALSE, eval = FALSE}
-df <- data %>%
-    mutate(fat_pc = fatalities/population,
-           ln_fat_pc = log(fat_pc),
-           ln_tvmt_pc = log(totalvmt/population))
-# Bivariate OLS 
-reg3a_1 <- lm(log(fatal_per_cap) ~ primary, data = data)
-reg3a_1_p <- plm(log(fatal_per_cap) ~ primary, data = data, model = "pooling")
-
-# Time FE
-df.p <- pdata.frame(data, index = c("state", "year")) #declaring panel dataset
-reg3a_2 <- lm(log(fatal_per_cap) ~ primary + factor(year), data = data)
-reg3a_2_p <- plm(log(fatal_per_cap) ~ primary, data = df.p, effect = "time", model = "within") #checking reg3a_2
-
-# Time FE and COv
-reg3a_3_p = plm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
-                + secondary + unemploy + log(vmt_per_cap) + precip + snow32
-                + rural_speed + urban_speed, 
-                data = data,
-                index = c("state", "year"),
-                model = "within",
-                effect = "time")
-
-# Make Table (All 3 Models)
-stargazer(reg3a_1_p, reg3a_2_p, reg3a_3_p, type='text')
-```
-
-```{r 3a Irrelvant (Non Logged Covariates), echo = FALSE, eval = FALSE}
-reg3a_3 <- plm(log(fatal_per_cap) ~ primary + secondary + college + beer + unemploy 
-               + log(vmt_per_cap) + precip + snow32 + rural_speed + urban_speed, 
-               data = df.p, effect = "time", model = "within")
-stargazer(reg3a_3, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
-
-reg3a_3.1 <- plm(log(fatal_per_cap) ~ primary + college + beer + unemploy 
-                 + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed, 
-                 data = df.p, effect = "time", model = "within")
-stargazer(reg3a_3.1, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
-
-# with state fixed effects as well
-reg3a_3.2 <- plm(log(fatal_per_cap) ~ primary + secondary + college + beer + unemploy 
-                 + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed + factor(state), 
-                 data = df.p, effect = "time", model = "within")
-stargazer(reg3a_3.2, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
-
-reg3a_3.3 <- plm(log(fatal_per_cap) ~ primary + college + beer + unemploy 
-                 + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed + factor(state), 
-                 data = df.p, effect = "time", model = "within")
-stargazer(reg3a_3.3, type = "text", no.space = TRUE, omit.stat=c("f", "ser"))
-```
 
 
 
-```{r 3a Regressions with Logged Covariates}
-# Bivariate with lm
-reg_a_bivariate_lm = lm(log(fatal_per_cap) ~ primary , data = data)
-# Bivariate with plm
-reg_a_bivariate_plm = plm(log(fatal_per_cap) ~ primary, 
-                          data = data,
-                          model = "pooling")
-# FE with lm
-reg_a_yfe_lm = lm(log(fatal_per_cap) ~ primary + factor(year), data = data)
-# FE with plm
-reg_a_yfe_plm = plm(log(fatal_per_cap) ~ primary, 
-                    data = data,
-                    index = c("state", "year"),  # order matters: group-var, time-var
-                    model = "within",
-                    effect = "time")  # only do time
 
-# FE + covars with lm
-reg_a_full_lm = lm(log(fatal_per_cap) ~ primary + factor(year) + college + beer
-                   + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
-                   + log(rural_speed) + log(urban_speed), data = data)
-# FE + covars with plm
-reg_a_full_plm = plm(log(fatal_per_cap) ~ primary + college + beer
-                     + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
-                     + log(rural_speed) + log(urban_speed), 
-                     data = data,
-                     index = c("state", "year"),  # order matters: unit-var, time-var
-                     model = "within",
-                     effect = "time")  # only do time
-```
-
-
-```{r 3a Logged Version Table, results='asis'}
-stargazer(reg_a_bivariate_plm, reg_a_yfe_plm, reg_a_full_plm, type=table_type, 
-          header=FALSE, dep.var.labels.include = FALSE, model.names = FALSE,
-          column.labels = c("Bivariate", "Year FE", "Year FE + Controls"))
-```
-
-We included covariates that we believe to be correlated (both statistically and theoretically) with both the outcome (log fatalities per capita) and the treatment variable (primary). This includes weather variables, education, beer, unemployment, speed limits, and tvmt. Since tvmt is a level variable, we thought it best to divide it by population and take its log. We also logged total vehicle miles traveled per capita because we think the increase in fatalities per capita would be proportional to a percentage point increase in vehicle miles traveled per capita; not absolute levels, since the percentage point increase is a better measure of deviation from the norm, and drivers are more likely to adjust poorly to a deviation from the norm than to an absolute increase in vehicle miles traveled. In addition, we logged precip because we care about percentage-point deviation from the norm. We did not log snow because it has zeros. Since we used per-capita measures, we did not include population. We included "secondary" in one of the regressions to identify the marginal effect of having a primary seatbelt law in addition to the secondary one where that is already in place. 
-
-Including these covariates drastically changes our point estimate. When the covariates other than secondary are include, the effect essentially disappears though remains negative. This is due to the fact that variation in fatalities per capita that we previously attributed to "primary" in the OLS regression without covariates is actually attributable to these other characteristics. Furthermore, once secondary is included, the effect remains insignificant but turns positive. If this is actually a true zero, then this could be because the secondary policy already prevents fatalities. If this is a true positive (we are less convinced), then it could be that the primary policy causes people to take less responsibility of one's own actions and depend on law enforcement. Laws can cause rebellion from teens and also unintentionally shift responsibility from the citizen to the government.
-
-In addition, it is worth noting that when adding state fixed effects, the coefficient on primary becomes negative and significant, even with and without controlling for "secondary." In fact, it is even more negative when controlling for "secondary." This, to us, seems to identify the treatment effect since it controls for any intrinsic state characteristics that were not included and could have cause omitted variable bias. However, we are not convinced this is the correct treatment effect since the treatment may be time-varying and these policies were enacted at different times (see section notes 11/1).
 
 
 
@@ -390,192 +88,20 @@ In addition, it is worth noting that when adding state fixed effects, the coeffi
 
 \newpage
 ## Part (b)
-**Ignore omitted variables bias issues for the moment. Do you think the standard errors from above are right? Compute the Huber-White heteroskedasticity robust standard errors (e.g., ", robust"). Do they change much? Compute the clustered standard errors that are robust to within-state correlation (e.g., ", cluster(state)"). Do this using both the "canned" command and manually using the formulas we learned in class. Do the standard errors change much? Are you surprised? Interpret.**
-
-```{r 3b Irrelevant Robust SE (Non Logged Covariates), echo = FALSE, eval = FALSE}
-# Robust SE (Canned)
-reg3b_1_robust <- coeftest(reg3a_1, vcov = vcovHC(reg3a_1, method = "white1", type = "HC0"))
-reg3b_2_robust <- coeftest(reg3a_2_p, vcov = vcovHC(reg3a_2_p, method = "white1", type = "HC0"))
-reg3b_3_robust <- coeftest(reg3a_3, vcov = vcovHC(reg3a_3, method = "white1", type = "HC0"))
-
-stargazer(reg3a_1, reg3b_1_robust, reg3a_2_p, reg3b_2_robust, reg3a_3, reg3b_3_robust,
-          title = "Regression with Robust SE",
-          dep.var.caption = "Log(Fatality per Population)",
-          dep.var.labels.include = FALSE, model.names = FALSE,
-          column.labels = c("Biv", "Biv(Robust)", "Yr FE", "Yr FE(Robust)", "Ctr/Yr FE", "Ctr/Yr FE(Robust)"),
-          keep = "primary",
-          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
-          type = table_type, digits = 4)
-
-reg3b_1_cluster <- coeftest(reg3a_1, vcov = vcovCL, cluster = ~state)
-reg3b_2_cluster <- coeftest(reg3a_2_p, vcov = vcovHC(reg3a_2_p, type = "HC0", cluster = "group"))
-reg3b_3_cluster <- coeftest(reg3a_3, vcov = vcovHC(reg3a_3, type = "HC0", cluster = "group"))
-
-stargazer(reg3a_1, reg3b_1_cluster, reg3a_2_p, reg3b_2_cluster, reg3a_3, reg3b_3_cluster,
-          title = "Regression with Clustered SE",
-          dep.var.caption = "Log(Fatality per Population)",
-          dep.var.labels.include = FALSE, model.names = FALSE,
-          column.labels = c("Biv", "Biv(Cluster)", "Yr FE", "Yr FE(Cluster)", "Ctr/Yr FE", "Ctr/Yr FE(Cluster)"),
-          keep = "primary",
-          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
-          type = table_type, digits = 4)
-
-# Manually Calculate Robust SE for Bivariate OLS
-Y_a <- df[,"ln_fat_pc"] %>%
-    as.matrix() #1104 x 1
-X_a <- df[,"primary"] %>% 
-    mutate(cons = 1) %>%
-    select(cons, primary) %>%
-    as.matrix() #1104 x 2
-XX_inv <- solve(t(X_a) %*% X_a) #2 x 2
-B_a = XX_inv %*% (t(X_a)%*%Y_a) #2 x 1 # This matches reg3a_1$coefficients
-Resid_a <- Y_a - (X_a %*% B_a) #1104 x 1 # This matches reg3a_1$residuals
-v2_a <- diag(diag(Resid_a %*% t(Resid_a))) #1104 x 1104
-vcov_cluster <- (XX_inv) %*% (t(X_a) %*% v2_a %*% X_a) %*% XX_inv
-vcov_cluster[2,2]^0.5
-
-# Clustered SE (Canned)
-reg3b_1_cluster <- coeftest(reg3a_1, vcov = vcovCL, cluster = ~state)
-reg3b_2_cluster <- coeftest(reg3a_2_p, vcov = vcovHC(reg3a_2_p, type = "HC0", cluster = "group"))
-reg3b_3_cluster <- coeftest(reg3a_3, vcov = vcovHC(reg3a_3, type = "HC0", cluster = "group"))
-
-stargazer(reg3a_1, reg3b_1_cluster, reg3a_2_p, reg3b_2_cluster, reg3a_3, reg3b_3_cluster,
-          title = "Regression with Clustered SE",
-          dep.var.caption = "Log(Fatality per Population)",
-          dep.var.labels.include = FALSE, model.names = FALSE,
-          column.labels = c("Biv", "Biv(Cluster)", "Yr FE", "Yr FE(Cluster)", "Ctr/Yr FE", "Ctr/Yr FE(Cluster)"),
-          keep = "primary",
-          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
-          type = "text", digits = 4)
-```
+**Estimate another event study regression using all the event time indicators
+save one that you choose to omit. Generate a plot of the event study
+coefficients.**
 
 
-```{r 3.b heteroskedasticity check, echo=F}
-grid.arrange(
-    qplot(data$college, resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
-    qplot(data$beer, resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
-    qplot(data$unemploy, resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
-    qplot(log(data$precip), resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
-    qplot(data$snow32, resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
-    qplot(log(data$rural_speed), resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
-    qplot(log(data$urban_speed), resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
-    qplot(log(data$vmt_per_cap), resid(reg_a_bivariate_plm), ylab="residuals", alpha=I(0.1)),
-    nrow = 4, heights=rep(12,4))
-```
-
-```{r 3.b bivariate robust SE (manual)}
-# Bivariate, Robust SEs (manual)
-Sigma = diag(resid(reg_a_bivariate_plm)^2)
-X = model.matrix(~ primary, data = data)
-XpX = t(X)%*%X
-XpXinv = solve(XpX)
-XpSigmaX = t(X)%*%Sigma%*%X
-var_b = XpXinv %*% XpSigmaX %*% XpXinv
-SE_3b_1 = sqrt(diag(var_b))
-SE_3b_1
-
-# Bivariate, Robust SEs (canned)
-coeftest(reg_a_bivariate_lm, vcov = vcovHC(reg_a_bivariate_lm, method="white1", type="HC0"))
-```
-
-Yay! We got the same as the canned standard errors.
 
 
-```{r 3.b year FE robust SE (manual)}
-# Year FE, Robust SEs (manual)
-d_temp = data %>%
-    mutate(resids = reg_a_yfe_lm$residuals) %>%
-    dummy_cols(., select_columns = 'year') %>%
-    select(primary, resids, state, contains('year_'))
-k = ncol(d_temp) - 2
-meat = matrix(0, nrow=k, ncol=k)
-# sum over all states
-# for each state, subset just that state and calc X'(ee')X
-for (s in unique(data$state)) {
-    X = as.matrix(d_temp %>% filter(state==s) %>% select(-state, -resids))
-    e = as.matrix(d_temp %>% filter(state==s) %>% select(resids))
-    meat = meat + t(X)%*% (e%*%t(e)) %*% X
-}
-# X'X full data
-X = as.matrix(d_temp %>% select(-state, -resids))
-XpX = t(X)%*%X
-XpXinv = solve(t(X)%*%X)
-N = length(unique(data$state))
-T_ = length(unique(data$year))
-var_b = XpXinv %*% meat %*% XpXinv * (N*T_ - 1) * T_ / ((N*T_ - k)*(T_ - 1))
-SE_b3_2 = sqrt(diag(var_b))
-rm(d_temp)
-# Cluster robust standard errors
-SE_b3_2[1]
-# Year FE, Robust SEs (canned)
-coeftest(reg_a_yfe_lm, vcov = vcovCL, cluster = ~state)[[2,2]]
-```
-```{r canned SE tests that do not match, include=F, eval=F}
-coeftest(reg_a_yfe_lm, vcov = vcovHC(reg_a_yfe_lm, type = "HC"), cluster = ~state)[[2,2]]
-coeftest(reg_a_yfe_lm, vcov = vcovHC(reg_a_yfe_lm), cluster = ~state)[[2,2]]
-coeftest(reg_a_yfe_lm, vcov = vcovHC(reg_a_yfe_lm, type = "const"), cluster = ~state)[[2,2]]
-coeftest(reg_a_yfe_lm, vcov = vcov(reg_a_yfe_lm), cluster = ~state)[[2,2]]
-
-coeftest(reg_a_yfe_lm, vcov = vcovHC(reg_a_yfe_plm, 
-                                     cluster = "group", 
-                                     type = "HC0", 
-                                     sandwich = TRUE, 
-                                     fix = TRUE, 
-                                     cadjust = TRUE), 
-         cluster = ~state)[2]
-
-coeftest(reg_a_yfe_lm, vcov = plm::vcovHC(reg_a_yfe_plm, 
-                                          cluster = "group", 
-                                          method = "arellano",
-                                          type = "sss", 
-                                          sandwich = FALSE, 
-                                          fix = FALSE, 
-                                          cadjust = FALSE), 
-         cluster = ~state)
-```
-
-```{r 3.b year FE + covariates robust SE (manual)}
-# Year FE + covariates, Robust SEs (manual)
-d_temp = data %>%
-    mutate(resids = reg_a_yfe_lm$residuals) %>%
-    dummy_cols(., select_columns = 'year') %>%
-    select(primary, resids, state, contains('year_'))
-k = ncol(d_temp) - 2
-meat = matrix(0, nrow=k, ncol=k)
-# sum over all states
-# for each state, subset just that state and calc X'(ee')X
-for (s in unique(data$state)) {
-    X = as.matrix(d_temp %>% filter(state==s) %>% select(-state, -resids))
-    e = as.matrix(d_temp %>% filter(state==s) %>% select(resids))
-    meat = meat + t(X)%*% (e%*%t(e)) %*% X
-}
-# X'X full data
-X = as.matrix(d_temp %>% select(-state, -resids))
-XpX = t(X)%*%X
-XpXinv = solve(t(X)%*%X)
-N = length(unique(data$state))
-T_ = length(unique(data$year))
-var_b = XpXinv %*% meat %*% XpXinv * (N*T_ - 1) * T_ / ((N*T_ - k)*(T_ - 1))
-SE_3b_3 = sqrt(diag(var_b))
-rm(d_temp)
-# Cluster robust standard errors
-SE_3b_3[1]
-
-# Year FE + covariates, Robust SEs (canned)
-coeftest(reg_a_full_lm, vcov = vcovCL, cluster = ~state)[[2,2]]
-```
 
 
-Standard errors from specifications in part (a) is likely incorrect given we have potential correlation across observations from same state.
 
-We observe that for simple bivariate regression and spepcification with only year fixed effects, robust standards are slightly larger. In model with controls and time fixed effects, robust standard errors are slightly smaller.
 
-We observe that clustered SE are significantly higher than the original as well as robust SE. This suggest that correlation within state over time is seriously biasing our conventional standard errors.
 
-From the below plots of the residuals, we can see that the variance of the
-residuals is not constant along many of our covariates -- especially speed
-limits, unemployment rates, and snow levels. Heteroskedasticity is an issue we
-need to correct for.
+
+
 
 
 
@@ -584,51 +110,23 @@ need to correct for.
 
 \newpage
 ## Part (c)
-**Compute the between estimator, both with and without covariates. Under what conditions will this give an unbiased estimate of the effect of primary seat belt laws on fatalities per capita? Do you believe those conditions are met? Are you concerned about the standard errors in this case?**
+**Create minimum and maximum event time indicators that correspond to bins of
+event time < -5 and event time > 5 respectively. Appropriately specify and
+estimate an event study regression using these min and max event time
+indicators. Generate a plot of the event study coefficients. Explain which
+specification you prefer, this one or the one in part (b).**
 
-The between estimator is consistent in the random effects model (under the RE assumptions) but not under fixed effects. Thus, in order for this between estimator to be unbiased, individual state time-invariant effects, which now rests within the error term, cannot be correlated with the independent variables (including 'primary' and other time-varying covariates). We do not think this assumption holds here, given each states' time-invariant characteristics regarding average driving styles or fatality rate would likely impact state adoption of primary and secondary laws as well as driving conditions captured by time-varying covariates. With the between estimator, we am worried about SE, given we are down to 48 observations, one for each state, by averaging each state's observation over time.
 
 
-```{r 3c, results='asis'}
-data <- data %>% 
-    mutate(ln_fat_pc = log(fatal_per_cap), ln_vmt_pc = log(vmt_per_cap),
-           ln_precip = log(precip), ln_rspeed = log(rural_speed), 
-           ln_uspeed = log(urban_speed))
-df_within <- data %>% 
-    group_by(state) %>% 
-    summarise(across(c(college, beer, primary, secondary, population, unemploy, 
-                       fatalities, totalvmt, precip, snow32, rural_speed, urban_speed, fatal_per_cap, 
-                       ln_fat_pc, ln_vmt_pc, ln_precip, ln_rspeed, ln_uspeed), mean, na.rm = TRUE))
 
-reg_3c_btw_nocov <- plm(ln_fat_pc ~ primary, 
-                        data = df_within, 
-                        model = "between")
 
-# Is between estimator same as simply including time fixed effects
-#reg_3c_time <- plm(ln_fat_pc ~ primary, 
-#                       data = df, 
-#                       index = c("state", "year"), model = "between", effects = "time")
 
-reg_3c_btw_cov <- plm(ln_fat_pc ~ primary + secondary + beer + college + unemploy
-                      + ln_vmt_pc + ln_precip + snow32 + ln_rspeed + ln_uspeed,
-                      data = df_within, 
-                      index = c("state"), model = "between")
 
-# Same Regression with lm() to check
-#reg_3c_btw_cov_checkwithlm <- lm(ln_fat_pc ~ primary + secondary + beer + college + unemploy
-#                                  + ln_tvmt_pc + precip + snow32 + rural_speed + urban_speed,
-#                                  data = df_within)
 
-stargazer(reg_3c_btw_nocov, reg_3c_btw_cov, 
-          title = "Between Estimator",
-          dep.var.caption = "Log(Fatality per Population)",
-          dep.var.labels.include = FALSE, model.names = FALSE,
-          column.labels = c("Binary", "Covariates"),
-          keep = c("primary"),
-          add.lines=list(c('Covariates', 'No', 'Yes')),
-          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
-          digits = 4, type = table_type, header = FALSE)
-```
+
+
+
+
 
 
 
@@ -636,43 +134,18 @@ stargazer(reg_3c_btw_nocov, reg_3c_btw_cov,
 
 \newpage
 ## Part (d)
-**Compute the Random Effects estimator (including covariates). Under what conditions will this give an unbiased estimate of the effect of primary seat belt laws on fatalities per capita? What are its advantages or disadvantages as compared to pooled OLS?**
+**What happens to your estimates from part (b) if you exclude the “pure control”
+states from your sample? What about if you exclude the pure controls in part
+(c)?**
 
-```{r 3d, results='asis'}
-reg_3d_RE_bin <- plm(ln_fat_pc ~ primary, 
-                     data = data, 
-                     model = "random")
 
-reg_3d_RE_cov <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy
-                     + ln_vmt_pc + ln_precip + snow32 + ln_rspeed + ln_uspeed,
-                     data = data, 
-                     model = "random")
 
-reg_3d_pooled_bin <- plm(ln_fat_pc ~ primary, 
-                         data = data, 
-                         model = "pooling")
 
-reg_3d_pooled_cov <- plm(ln_fat_pc ~ primary + secondary + college + beer + unemploy
-                         + ln_vmt_pc + ln_precip + snow32 + ln_rspeed + ln_uspeed, 
-                         data = data, 
-                         model = "pooling")
 
-stargazer(reg_3d_RE_bin, reg_3d_RE_cov, reg_3d_pooled_bin, reg_3d_pooled_cov, 
-          title = "Random Effects vs Pooled",
-          dep.var.caption = "Log(Fatality per Population)",
-          dep.var.labels.include = FALSE, model.names = FALSE,
-          column.labels = c("RE", "RE", "Pooled", "Pooled"),
-          keep = c("primary"),
-          add.lines=list(c('Covariates', 'No', 'Yes', 'No', 'Yes')),
-          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE,
-          omit.stat=c("f", "ser"), type = table_type, header = FALSE, digits = 4)
-```
 
-Random Effects model will be unbiased when state-level unobserved heterogeneity is uncorrelated with the independent variables. If this were the case, then RE is more efficient than FE. However, as evidenced by 3a, this assumption does not not appear to hold. 
 
-Compared to pooled OLS, random effects assumes that within-state residuals are equally correlated with each other (as opposed to assuming no correlation between them in OLS). Random effects then used these residuals to compute weighted least squares, using the inverse of the variance-covariance matrices as weights. Similar to OLS, RE still assumed that across-state residuals are uncorrelated.
 
-The advantage of using RE is that it is more efficient than pooled OLS in the case when we have reason to think that states have exist time-invariant unobserved characteristics (which islikely the case here). However, when we think those unobservables are correlated with the independent variables, we would be better off using FE.
+
 
 
 
@@ -683,62 +156,15 @@ The advantage of using RE is that it is more efficient than pooled OLS in the ca
 
 \newpage
 ## Part (e)
-**Do you think the standard errors from RE are right? Compute the clustered standard errors. Are they substantially different? If so, why? (i.e., what assumption(s) are being violated?)**
-
-```{r 3e Clustered SE (Canned), results='asis'}
-reg_3d_RE_cov_cluster <- coeftest(reg_3d_RE_cov, vcov = vcovHC(reg_3d_RE_cov, type = "sss", cluster = "group"))
-reg_3d_pooled_cov_cluster <- coeftest(reg_3d_pooled_cov, vcov = vcovHC(reg_3d_pooled_cov, type = "sss", cluster = "group"))
-
-stargazer(reg_3d_RE_cov, reg_3d_RE_cov_cluster, reg_3d_pooled_cov, reg_3d_pooled_cov_cluster,
-          title = "Regression with Clustered SE",
-          dep.var.caption = "Log(Fatality per Population)",
-          dep.var.labels.include = FALSE, model.names = FALSE,
-          column.labels = c("RE", "RE(Cluster)", "Pooled", "Pool(Cluster)"),
-          keep = "primary",
-          add.lines=list(c('Covariates', 'Yes', 'Yes', 'Yes', 'Yes')),
-          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
-          type = table_type, header = FALSE, digits = 4)
-
-# Test for serial correlation
-# serialCorrelationTest(reg_3d_RE_cov, test = "rank.von.Neumann", 
-#     alternative = "two.sided", conf.level = 0.95) 
-
-pdwtest(reg_3d_RE_cov, alternative="two.sided")
-```
-
-The standard errors are different with and without clustering because there exists serial correlation in the error term (as evidenced by the Durbin-Watson test above). Clustered standard errors correct for these estimates.
+**Overall, does the event study regression make you more confident or less
+confident that seat belt laws reduce fatalities (relative to the fixed effects
+results that you estimated on the last problem set)? Briefly explain.**
 
 
 
 
 
 
-
-\newpage
-## Part (f)
-**Compute the FE estimator using only primary and year fixed effects as the covariates. Compute the normal standard errors and the clustered standard errors. If they are different, why?**
-
-```{r 3f Clustered SE (Canned), results='asis'}
-reg_a_yfe_plm_cluster <- coeftest(reg_a_yfe_plm, vcov = vcovHC(reg_a_yfe_plm, method = "white1", type = "HC0", cluster = "group"))
-
-stargazer(reg_a_yfe_plm, reg_a_yfe_plm_cluster,
-          title = "FE with Clustered SE",
-          dep.var.caption = "Log(Fatality per Population)",
-          dep.var.labels.include = FALSE, model.names = FALSE,
-          column.labels = c("FE", "FE(Cluster)"),
-          keep = "primary",
-          add.lines=list(c('Covariates', 'No', 'No')),
-          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
-          type = table_type, header = FALSE, digits = 4)
-
-# Test for serial correlation
-# serialCorrelationTest(reg_3d_RE_cov, test = "rank.von.Neumann", 
-#     alternative = "two.sided", conf.level = 0.95) 
-
-pdwtest(reg_a_yfe_plm, alternative="two.sided")
-```
-
-The estimate of FE with only primary and year FE is computed in 3a. The standard errors are surprisingly similar with and without clustering, though still the SE is larger in the clustered case. The Durbin-Watson test indicates that there is indeed positive autocorrelation and that it is stronger here than under the previous RE model. (Also note that we interpreted the question to be that we were asked to only estimate year FE; not state FE with year FE covariates.)
 
 
 
@@ -751,118 +177,47 @@ The estimate of FE with only primary and year FE is computed in 3a. The standard
 
 
 \newpage
-## Part (g)
-**Add the same range of covariates to the FE estimator that you did to the OLS estimator. Are the FE estimates more or less stable than the OLS estimates? Why?**
-
-```{r 3g, results='asis'}
-# OLS + covars with lm
-reg_g_ols_lm = lm(log(fatal_per_cap) ~ primary + college + beer
-                  + secondary + unemploy + log(vmt_per_cap) + log(precip) + snow32
-                  + log(rural_speed) + log(urban_speed), data = data)
-
-stargazer(reg_a_bivariate_lm, reg_g_ols_lm,reg_a_yfe_lm, reg_a_full_lm,
-          title = "OLS and FE with covariates",
-          dep.var.caption = "Log(Fatality per Population)",
-          dep.var.labels.include = FALSE, model.names = FALSE,
-          column.labels = c("OLS", "OLS", "FE", "FE"),
-          keep = "primary",
-          add.lines=list(c('Covariates', 'No', 'Yes', 'No', 'Yes')),
-          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE,
-          omit.stat=c("f", "ser"), type = table_type, header = FALSE, digits = 4)
-```
-
-The FE estimates are less stable than the OLS estimates when adding covariates. This is likely due to the fact that the FE estimate without covariates is exploiting variation between states with very different characteristics. Once those characteristics are controlled for with covariates, the effect disappears. On the other hand, OLS is exploiting variation across both time and state. When the covariates are added, it takes some variation away from the state dimension, but is still (perhaps unjustifiably) exploiting the time dimension. 
+## Part (f$^*$)
+**Building off the event study regression from part (c), estimate the
+interaction weighted event study estimator from Sun and Abraham (2020). As a reminder, the
+interacted event study regression takes the standard event time indicators
+(without any binning) and interacts each one with a cohort indicator (a cohort
+refers to a group of states that share the same date on which they were
+first treated). You then form the estimate for event time coefficient $\tau_j$ 
+by averaging the estimates of the cohort-specific $\tau_j$ using
+the weights described in Sun and Abraham (2020).**
 
 
+<!-- A FEW TIPS:
+• Given the interacted specification’s complexity and the potential
+colinearities involved, you may find it easier to manually generate the needed
+interaction terms rather than using factor-variable commands in Stata/R (e.g.
+Stata’s xi com- mand).
+
+• Some of the interactions between cohort indicators and event time indicators
+will generate constants, because the event time indicator is too early or too
+late to be identified for a given cohort. Think carefully about this. • In the
+case of the coefficients for j < -5 and j > 5, note that you will be averaging
+across cohorts and across event time coefficients.
+
+• You will need to compute the share that each cohort con- tributes to each
+event time indicator to get the right weights. E.g. suppose that the event time
+indicator for j = +5 were informed only by cohort 1, containing 3 states, and
+cohort 2, containing 1 state. Then the weights for event time indicator j = +5
+would be 0.75 for cohort 1 and 0.25 for cohort 2.
+
+• The paper references an eventstudyweights Stata package to estimate the
+cohort-by-event-time weights. Be aware that (as of 2020) this package computes
+the implicit weights that a standard event study regression applies to each of
+the cohort- by-event time coefficients, not the weights that should be used to
+generate the interaction weighted event study estimator.
+-->
 
 
 
 
 
 
-
-
-\newpage
-## Part (h)
-**Estimate a first-differences estimator, a 5-year differences estimator, and a long differences estimator, including year fixed effects (when feasible) and the appropriate covariates in each case. Briefly describe the pattern that emerges from the three differencing estimates. Where does the FE estimate fall in this pattern? Are you surprised?**
-
-```{r 3h Differencing Estimator, results='asis'}
-df_diff <- data %>% arrange(state, year) 
-varlist <- names(df_diff)[3:21]
-
-# First Differences
-for (i in varlist) {
-    df_diff <- df_diff %>%
-        group_by(state) %>%
-        mutate("{i}_diff" := eval(as.symbol(i)) - dplyr::lag(eval(as.symbol(i))))
-}
-
-reg3h_1 = plm(ln_fat_pc_diff ~ primary_diff + college_diff + beer_diff
-              + secondary_diff + unemploy_diff + ln_vmt_pc_diff + ln_precip_diff + snow32_diff
-              + ln_rspeed_diff + ln_uspeed_diff, 
-              data = df_diff,
-              index = c("state", "year"),
-              model = "within",
-              effect = "time")
-
-# Five Year Difference Estimator
-df_diff <- data %>% arrange(state, year) 
-
-for (i in varlist) {
-    df_diff <- df_diff %>%
-        group_by(state) %>%
-        mutate("{i}_diff" := eval(as.symbol(i)) - dplyr::lag(eval(as.symbol(i)), n = 5))
-}
-
-reg3h_2 = plm(ln_fat_pc_diff ~ primary_diff + college_diff + beer_diff
-              + secondary_diff + unemploy_diff + ln_vmt_pc_diff + ln_precip_diff + snow32_diff
-              + ln_rspeed_diff + ln_uspeed_diff, 
-              data = df_diff,
-              index = c("state", "year"),
-              model = "within",
-              effect = "time")
-
-
-# Long Differences Estimator
-df_diff <- data %>% arrange(state, year) 
-
-for (i in varlist) {
-    df_diff <- df_diff %>%
-        group_by(state) %>%
-        mutate("{i}_diff" := eval(as.symbol(i)) - dplyr::lag(eval(as.symbol(i)), n= 22))
-}
-
-reg3h_3 = plm(ln_fat_pc_diff ~ primary_diff + college_diff + beer_diff
-              + secondary_diff + unemploy_diff + ln_vmt_pc_diff
-              + ln_precip_diff + snow32_diff
-              + ln_rspeed_diff + ln_uspeed_diff, 
-              data = df_diff,
-              index = c("state", "year"),
-              model = "pooling")
-
-# Table
-stargazer(reg3h_1, reg3h_2, reg3h_3, 
-          title = "First, Second, and Long Difference Estimator\\label{tab:differences}",
-          dep.var.caption = "Differences in Log(Fatality per Population)",
-          dep.var.labels.include = FALSE, model.names = FALSE,
-          column.labels = c("1st", "5th", "Long"),
-          add.lines=list(c('Time FE', 'Yes', 'Yes', 'No')),
-          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, 
-          omit.stat=c("f", "ser"), type = table_type, header = FALSE, digits = 4)
-```
-
-From Table \ref{tab:differences}, we observe that 1st and 5th difference estimators give very similar or slightly
-more negative coefficients estimates, while standard errors go down
-significantly. Perhaps, this may mean that effect of implementing primary law is
-more volatile but stabilizes over longer term period. Long term difference
-estimator has the most negative coefficient. Another key feature to notice is
-that for the long difference estimator, we are taking the difference between the
-first and last year for each state, and we are left with one observation per
-state. Hence, all of the standard errors increase, and some, quite significantly.
-
-The fixed effects estimator from earlier parts seems to fall between the first
-and long differences estimator; however, it is very close to the long difference
-estimator.
 
 
 
@@ -874,26 +229,201 @@ estimator.
 
 
 \newpage
-## Part (i)
-**Make the case that the first-differences estimate is superior to
-the 5-year or long differences estimates.**
+<!--=========================================================================-->
+# Problem 2
+<!--=========================================================================-->
+**We now apply the synthetic control methods from Abadie et al (2010).**
 
-First differences provides the researcher with more observations than the 5-year
-long differences and therefore potentially more power.
-
-
-## Part (j)
-**Make the case that the 5-year or long differences estimates are
-superior to the first-differences estimate.**
-
-Five-year differences could potentially identify a larger effect than
-first-differences, though with less power (fewer observations). This may also be
-the strategy a researcher would want to take if they suspect that the treatment
-to take a while to fully take effect.
-
+<!--
+Some preliminaries: Abadie et al have created a downloadable “canned”
+command to run the synthetic control method. To download the com-
+mand for Stata you will need to have an updated version of Stata and
+be running Stata on a Mac, PC or Unix/Linux. R code is also available.
+In Stata type ‘update all’ and then ‘update swap’. Next, go to the web-
+site below and follow the instructions. There is also downloadable code
+for Matlab at http://web.stanford.edu/~jhain/synthpage.html (note:
+blindly copying and pasting this URL may not reproduce the tilde)
+ -->
 
 
+## Part (a)
+**We created an aggregate “treatment” state (state number 99 or “TU”) which
+combines the (population weighted) data from the first 4 states to have a
+primary seatbelt law (CT, IA, NM, TX). Please use this state as the “treatment”
+state in the synthetic control analysis.**
 
+### ------ a.i
+**Compare the average pre-period log traffic fatalities per capita of the TU
+site to that of the average of all the “control” states. Next, graph the
+pre-period log traffic fatalities by year for the pre-period for both the TU and
+the average of the control group. Interpret.**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### ------ a.ii
+**Compare the dependent variable between the TU site and each control state for
+the year before the treatment. Which control state best matches the TU? Now
+compare this state’s covariates with the TU covariates. Do they appear similar?
+What might this imply for in terms of using this state as the counterfactual
+state?**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
+## Part (b)
+**Apply the synthetic control method using the available covariates and
+pre-treatment outcomes to construct a synthetic control group.**
+
+### ------ b.i
+**Discuss the synthetic control method including its benefits and potential
+drawbacks.**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### ------ b.ii
+**Use the software package provided by Abadie et al to apply the synthetic
+control method. (You are free to use either Stata, Matlab, or R but answers will
+be provided in Stata and R only). Please be sure to state precisely what the
+command is doing and how you determined your preferred specification.**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
+## Part (c)
+**Graphical interpretation and treatment significance.**
+
+### ------ c.i
+**Generate graphs plotting the gap between the TU and the synthetic control
+group under both your preferred specification and a few other specifications
+you tried.**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### ------ c.ii
+**Compare the graph plotting the gap between the TU and the synthetic control
+group under your preferred specification with the graphs plotting the gap
+between each control state and its “placebo” treatment. Do you conclude that the
+treatment was significant? Why or why not?**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### ------ c.iii
+**Create a graph of the post-treatment/pre-treatment prediction ratios of the
+Mean Squared Prediction Errors (MSPE) for the actual and “plecebo” treatment
+gaps in (ii). [See Abadie et al. for an example]. Do you conclude that the
+treatment was significant? Why or why not?**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
+## Part (d)
+**How do your synthetic control results compare to your fixed effects results
+from Question (3) in the last problem set? Interpret any differences.**
 
 
 
