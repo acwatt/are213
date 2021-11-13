@@ -46,13 +46,14 @@ library(stargazer)
 library(ggplot2)
 library(tinytex)
 library(Synth)
+library(kableExtra)
 # library(plm)
 # library(lmtest)
 # library(sandwich)
 # library(gridExtra)
 # library(grid)
 # library(gtable)
-# library(fastDummies)
+library(fastDummies)
 # library(EnvStats)
 
 
@@ -71,6 +72,7 @@ library(Synth)
 estimate in this data set. Code up a separate event time indicator for each
 possible value of event time in the data set. Estimate an event study regression
 using all the event time indicators. What happens?**
+\vspace{1em}
 
 
 ```{r Load Data, eval=T}
@@ -85,10 +87,145 @@ data = read_dta('traffic_safety2.dta') %>%
 
 ```
 
-Let's determine the event time values
+
+These are the minimum and maximum event times that exist in the data for states
+that enacted a primary seat belt law in our study period (1981-2003).
+
 ```{r Determine event time values}
-#heres a chunk
+# Create list of event dates for states that passed primary laws in our study
+event_dates = data %>%
+    group_by(state) %>%
+    mutate(event = primary - lag(primary), # event=1 ==> first year primary=1
+           event_year = year) %>%
+    filter(event == 1) %>%
+    select(state, event_year)
+
+# Add year of primary event and event time (t) to dataframe
+data = data %>%
+    left_join(event_dates, by='state') %>%
+    mutate(j = ifelse(is.na(event_year), 99, year - event_year))
+    # t = 99 ==> control state (doesn't pass primary during study period)
+
+# Table of max and min event times
+# Shouldn't these be our event study thresholds?
+df_temp = data %>%
+    filter(j < 99) %>%
+    group_by(state) %>%
+    summarize(min_j = min(j), max_j = max(j))
+
+df_temp %>%
+    arrange(max_j) %>%
+    filter(!is.na(max_j), max_j < 99) %>%
+    select(max_j) %>%
+    ggplot(aes(x=max_j), data=.) +
+    geom_histogram() +
+    xlab("max event period") +
+    ggtitle("Treated States, maximum event time histogram")
+
+max_j_inclusive = min(df_temp$max_j, na.rm = T)
+min_j_inclusive = max(df_temp$min_j, na.rm = T)
+max_j = max(filter(data, j<99)$j, na.rm = T)
+min_j = min(filter(data, j<99)$j, na.rm = T)
+
+data.frame(max_j = max_j, min_j = min_j) %>%
+  kbl(caption = "Maximum \\& Minimum Event Time Values",
+      col.names = c('Max j', 'Min j'),
+      align = 'cc') %>%
+  kable_styling(latex_options = "HOLD_position")
 ```
+
+
+
+```{r create event time dummies}
+create_dummies = function(df, colname, min_value, max_value) {
+    # Create dummies for each value of colname between min_value and max_value
+    df1 = df
+    for (val in min_value:max_value) {
+        df1= mutate(df1, "{colname}_{val}" := ifelse(eval(as.symbol(colname)) == val, 1, 0))
+    }
+    return(df1)
+}
+
+name_order1 = paste('j', min_j_inclusive:max_j_inclusive, sep='_')
+df_few_dummies = create_dummies(data,
+                             colname = 'j',
+                             min_value = min_j_inclusive,
+                             max_value = max_j_inclusive) %>%
+    relocate(all_of(name_order1))
+
+names(df_few_dummies) = gsub(x = names(df_few_dummies), 
+                             pattern = "j\\_", 
+                             replacement = "j")
+
+name_order2 = paste('j', min_j:max_j, sep='_')
+df_all_dummies = dummy_cols(data, select_columns = 'j') %>%
+    select(-j_99) %>%
+    filter(state != 99)  %>%
+    relocate(all_of(name_order2))
+
+names(df_all_dummies) = gsub(x = names(df_all_dummies), 
+                             pattern = "j\\_", 
+                             replacement = "")
+```
+
+The corresponding regression equation is:
+\[
+Y_{st} = \alpha + \sum\limits_{j=min\_t}^{max\_t} \tau_j D_{jst}
+    + \gamma_s + \delta_t + \varepsilon_{st} + u_{st}
+\]
+so we estimate the regression with state and year fixed effects.
+
+```{r Run dummy-trap event study regression, results='asis'}
+reg_1a = df_all_dummies %>%
+    mutate(state=factor(state), year=factor(year)) %>%
+    select(ln_fat_pc, state, year, contains('j_')) %>%
+    lm(ln_fat_pc ~ ., data = .)
+
+
+stargazer(reg_1a, 
+          title = "Event Study Regressions",
+          dep.var.caption = "Log(Fatality per Population)",
+          dep.var.labels.include = FALSE,
+          # model.names = FALSE,
+          column.labels = c("Event Study a"),
+          # keep = paste0('^j', (-5):5, '$'),
+          # order = paste0('/^t_', (-5):5, '$/'),
+          # perl = T,
+          # covariate.labels = as.character((-5:5)),
+          add.lines=list(c('Choose dummy to omit', 'No')),
+          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE,
+          omit.stat=c("f", "ser"),
+          digits = 4, type = table_type, header = FALSE)
+
+
+# stargazer(reg_1a, 
+#           title = "Event Study Regressions",
+#           dep.var.caption = "Log(Fatality per Population)",
+#           dep.var.labels.include = FALSE,
+#           # model.names = FALSE,
+#           column.labels = c("Event Study a"),
+#           keep = paste0('/^t', -5:5, '$/'),
+#           order = paste0('/^t', -5:5, '$/'),
+#           perl = T,
+#           covariate.labels = as.character((-5:5)),
+#           add.lines=list(c('Choose dummy to omit', 'No')),
+#           font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE,
+#           omit.stat=c("f", "ser"),
+#           digits = 4, type = table_type, header = FALSE)
+```
+
+
+
+<!--
+Notes:
+the panel is very unbalanced. Even after using -5 and +5 thresholds, there are
+still 5 states that have max event time less than 5. What happens to these?
+
+order of the regression table is not correct, despite using the `order` arg.
+
+Order the columns of the dataframe, then hopefully will be in order for regression
+and for plotting
+-->
 
 
 
@@ -110,6 +247,12 @@ Let's determine the event time values
 save one that you choose to omit. Generate a plot of the event study
 coefficients.**
 
+```{r Omit t-1 dummy}
+reg_1b = lm(ln_fat_pc ~ .,
+   data = df_all_dummies %>%
+       mutate(state=factor(state), year=factor(year)) %>%
+       select(ln_fat_pc, state, year, contains('j_'), -`-1`))
+```
 
 
 
