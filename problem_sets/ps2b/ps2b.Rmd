@@ -10,6 +10,11 @@ output:
 header-includes:
    - \usepackage{dcolumn}
    - \usepackage{amsmath}
+   - \usepackage{floatrow}
+   - \floatsetup[figure]{capposition=top}
+   - \usepackage{float}
+   - \floatstyle{plaintop}
+   - \restylefloat{table}
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'ARE_213_PS2b.pdf')) })
 ---
 
@@ -55,8 +60,6 @@ library(kableExtra)
 # library(gtable)
 library(fastDummies)
 # library(EnvStats)
-
-
 ```
 
 
@@ -88,8 +91,9 @@ data = read_dta('traffic_safety2.dta') %>%
 ```
 
 
-These are the minimum and maximum event times that exist in the data for states
-that enacted a primary seat belt law in our study period (1981-2003).
+Table \ref{tab:max-min-event-times-table} lists the minimum and maximum event
+times that exist in the data for states that enacted a primary seat belt law in
+our study period (1981-2003).
 
 ```{r Determine event time values}
 # Create list of event dates for states that passed primary laws in our study
@@ -113,20 +117,13 @@ df_temp = data %>%
     group_by(state) %>%
     summarize(min_j = min(j), max_j = max(j))
 
-df_temp %>%
-    arrange(max_j) %>%
-    filter(!is.na(max_j), max_j < 99) %>%
-    select(max_j) %>%
-    ggplot(aes(x=max_j), data=.) +
-    geom_histogram() +
-    xlab("max event period") +
-    ggtitle("Treated States, maximum event time histogram")
-
 max_j_inclusive = min(df_temp$max_j, na.rm = T)
 min_j_inclusive = max(df_temp$min_j, na.rm = T)
 max_j = max(filter(data, j<99)$j, na.rm = T)
 min_j = min(filter(data, j<99)$j, na.rm = T)
+```
 
+```{r max-min-event-times-table}
 data.frame(max_j = max_j, min_j = min_j) %>%
   kbl(caption = "Maximum \\& Minimum Event Time Values",
       col.names = c('Max j', 'Min j'),
@@ -134,9 +131,39 @@ data.frame(max_j = max_j, min_j = min_j) %>%
   kable_styling(latex_options = "HOLD_position")
 ```
 
+Notice from Figure \ref{fig:max_event_time_distribution} that we have a wide
+range of maximum event times across our panel of states. One state even has a
+maximum event time of 0 -- meaning they only added primary seat belt laws in the
+last year of our panel (2003). This means we will have an unbalanced panel if we
+run a regression on all possible event time dummies. In fact, we will still have
+an unbalance panel if we create max and min event time bins to aggregate early
+and late periods (an indicator for a event times greater than 5 and an indicator
+for all event times less than -5), we will still have an unbalanced panel.
+
+```{r max_event_time_distribution, message=F, fig.width=4, fig.height=3, fig.align='center', fig.cap='Treated States, maximum event time histogram'}
+df_temp %>%
+    arrange(max_j) %>%
+    filter(!is.na(max_j), max_j < 99) %>%
+    select(max_j) %>%
+    ggplot(aes(x=max_j), data=.) +
+    geom_histogram() +
+    xlab("max event period")
+```
+
+To estimate the event study treatment effects, corresponding regression equation is:
+\[
+Y_{st} = \alpha + \sum\limits_{j=min\_t}^{max\_t} \tau_j D_{jst}
+    + \gamma_s + \delta_t + \varepsilon_{st} + u_{st}
+\]
+Note that we are estimating the regression with state and year fixed effects. In
+practice, we would want to omit a specific event time indicator so all our treatment
+effects are measured with respect to that event time. If we keep all our indicators,
+then R will implicitly choose which to event time indicator to omit for us because
+the event time dummies, along with state and year fixed effects, are colinear.
 
 
 ```{r create event time dummies}
+# Function for adding dummies to a dataframe for all uniuqe values between given numbers
 create_dummies = function(df, colname, min_value, max_value) {
     # Create dummies for each value of colname between min_value and max_value
     df1 = df
@@ -146,72 +173,39 @@ create_dummies = function(df, colname, min_value, max_value) {
     return(df1)
 }
 
+# Create order of dummies for dataframe (then used for regression table)
 name_order1 = paste('j', min_j_inclusive:max_j_inclusive, sep='_')
+# Create Dummies that make a balanced panel
+# (only dummies for event times j that are shared across all states)
 df_few_dummies = create_dummies(data,
                              colname = 'j',
                              min_value = min_j_inclusive,
                              max_value = max_j_inclusive) %>%
-    relocate(all_of(name_order1))
+    relocate(all_of(name_order1)) %>% 
+    # Change "j_..." to "..._ET" because LaTeX doesn't like j_-3 type variable names
+    rename_with(~ paste0(str_replace(., 'j_', ''), '_ET'), contains("j_"))
 
-names(df_few_dummies) = gsub(x = names(df_few_dummies), 
-                             pattern = "j\\_", 
-                             replacement = "j")
-
+# Create order of dummies for dataframe (then used for regression table)
 name_order2 = paste('j', min_j:max_j, sep='_')
+# Create Dummies for all possible event times
+# (results in unbalanced panel over event times j)
 df_all_dummies = dummy_cols(data, select_columns = 'j') %>%
     select(-j_99) %>%
     filter(state != 99)  %>%
-    relocate(all_of(name_order2))
-
-names(df_all_dummies) = gsub(x = names(df_all_dummies), 
-                             pattern = "j\\_", 
-                             replacement = "")
+    relocate(all_of(name_order2)) %>% 
+    rename_with(~ paste0(str_replace(., 'j_', ''), '_ET'), contains("j_"))
 ```
 
-The corresponding regression equation is:
-\[
-Y_{st} = \alpha + \sum\limits_{j=min\_t}^{max\_t} \tau_j D_{jst}
-    + \gamma_s + \delta_t + \varepsilon_{st} + u_{st}
-\]
-so we estimate the regression with state and year fixed effects.
+We can see column (1) of  Table \ref{tab:event-study-dummy-trap} that the indicator for event time +19
+was omitted for the regression. However, for interpretability, we'd rather have
+the treatment effects relative to a period closer to the year of initial treatment.
 
-```{r Run dummy-trap event study regression, results='asis'}
+```{r Run dummy-trap event study regression}
 reg_1a = df_all_dummies %>%
     mutate(state=factor(state), year=factor(year)) %>%
-    select(ln_fat_pc, state, year, contains('j_')) %>%
+    select(ln_fat_pc, state, year, contains('_ET')) %>%
     lm(ln_fat_pc ~ ., data = .)
 
-
-stargazer(reg_1a, 
-          title = "Event Study Regressions",
-          dep.var.caption = "Log(Fatality per Population)",
-          dep.var.labels.include = FALSE,
-          # model.names = FALSE,
-          column.labels = c("Event Study a"),
-          # keep = paste0('^j', (-5):5, '$'),
-          # order = paste0('/^t_', (-5):5, '$/'),
-          # perl = T,
-          # covariate.labels = as.character((-5:5)),
-          add.lines=list(c('Choose dummy to omit', 'No')),
-          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE,
-          omit.stat=c("f", "ser"),
-          digits = 4, type = table_type, header = FALSE)
-
-
-# stargazer(reg_1a, 
-#           title = "Event Study Regressions",
-#           dep.var.caption = "Log(Fatality per Population)",
-#           dep.var.labels.include = FALSE,
-#           # model.names = FALSE,
-#           column.labels = c("Event Study a"),
-#           keep = paste0('/^t', -5:5, '$/'),
-#           order = paste0('/^t', -5:5, '$/'),
-#           perl = T,
-#           covariate.labels = as.character((-5:5)),
-#           add.lines=list(c('Choose dummy to omit', 'No')),
-#           font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE,
-#           omit.stat=c("f", "ser"),
-#           digits = 4, type = table_type, header = FALSE)
 ```
 
 
@@ -241,17 +235,48 @@ and for plotting
 
 
 
-\newpage
+
 ## Part (b)
 **Estimate another event study regression using all the event time indicators
 save one that you choose to omit. Generate a plot of the event study
 coefficients.**
 
 ```{r Omit t-1 dummy}
-reg_1b = lm(ln_fat_pc ~ .,
-   data = df_all_dummies %>%
-       mutate(state=factor(state), year=factor(year)) %>%
-       select(ln_fat_pc, state, year, contains('j_'), -`-1`))
+reg_1b = df_all_dummies %>%
+    mutate(state=factor(state), year=factor(year)) %>%
+    select(ln_fat_pc, state, year, contains('_ET'), -`-1_ET`) %>%
+    lm(ln_fat_pc ~ ., data = .)
+
+```
+
+We have chosen to omit the event time -1 from the regression so the other event
+time inidicator coefficients can be interpreted as relative to the year immediately
+before the passage of the primary seat belt law.
+Column (2) of Table \ref{tab:event-study-dummy-trap} shows that the -1 event time
+period was omitted, and we we see that all of the treatment effects occuring before
+event time -1 are not significantly different from zero, whereas all the event time
+coefficient estimates for after event time -1 are negative and all are signficantly
+less than zero starting with event period 5.
+
+```{r event-study-table, results='asis'}
+stargazer(reg_1a, reg_1b,
+          title = "Event Study Regressions\\label{tab:event-study-dummy-trap}",
+          dep.var.caption = "Log(Fatality per Population)",
+          dep.var.labels.include = FALSE,
+          # model.names = FALSE,
+          column.labels = c("Event Study a", "Event Study b"),
+          # keep = paste0('^j', (-5):5, '$'),
+          # order = paste0('/^t_', (-5):5, '$/'),
+          # perl = T,
+          # covariate.labels = as.character((-5:5)),
+          omit = c("state", "year"),
+          add.lines=list(c('Chose dummy to omit', 'No', 'Yes')),
+          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE,
+          omit.stat=c("f", "ser"),
+          single.row = TRUE,
+          digits = 4, type = table_type, header = FALSE)
+
+
 ```
 
 
@@ -278,12 +303,73 @@ indicators. Generate a plot of the event study coefficients. Explain which
 specification you prefer, this one or the one in part (b).**
 
 
+```{r Create threshold event time dummies}
+# Function for adding dummies to a dataframe for all uniuqe values between given numbers
+create_dummies_threshold = function(df, colname, min_value, max_value, suffix = NULL) {
+    # Create indicator variables for each value of colname between min_value and max_value
+    # then create indicator variables for all values of colname below min_value
+    # and another for above max_value
+    if (is.null(suffix)) {suffix = colname}
+    df1 = df
+    # add aggregate indicator for all values below min_value
+    df1 = mutate(df1, "below_{suffix}" := ifelse(eval(as.symbol(colname)) < min_value, 1, 0))
+    # add all indicators in between min and max_value
+    for (val in min_value:max_value) {
+        df1 = mutate(df1, "{val}_{suffix}" := ifelse(eval(as.symbol(colname)) == val, 1, 0))
+    }
+    # add aggregate indicator for all values above max_value
+    df1 = mutate(df1, "above_{suffix}" := ifelse(eval(as.symbol(colname)) > max_value, 1, 0))
+    return(df1)
+}
+
+
+# Create Dummies that make a balanced panel
+# (only dummies for event times j that are shared across all states)
+df_threshold_dummies = create_dummies_threshold(data,
+                                          colname = 'j',
+                                          min_value = -5,
+                                          max_value = 5,
+                                          suffix = 'ET')
+
+```
+
+```{r Regression with threshold event time dummies}
+reg_1c = df_threshold_dummies %>%
+    mutate(state=factor(state), year=factor(year)) %>%
+    select(ln_fat_pc, state, year, contains('_ET'), -`-1_ET`) %>%
+    lm(ln_fat_pc ~ ., data = .)
+
+```
+
+
+```{r Event Study table with Thresholds, results='asis'}
+stargazer(reg_1c,
+          title = "Event Study Regression with Threshold Indicators\\label{tab:event-study-thresholds}",
+          dep.var.caption = "Log(Fatality per Population)",
+          dep.var.labels.include = FALSE,
+          # model.names = FALSE,
+          column.labels = c("Event Study c"),
+          # keep = paste0('^j', (-5):5, '$'),
+          # order = paste0('/^t_', (-5):5, '$/'),
+          # perl = T,
+          # covariate.labels = as.character((-5:5)),
+          omit = c("state", "year"),
+          add.lines=list(c('Chose dummy to omit', 'Yes'), c('Agg. Threshold Indicators', 'Yes')),
+          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE,
+          omit.stat=c("f", "ser"),
+          single.row = TRUE,
+          notes = c("below\\_ and above\\_ variables are aggregate indicators for",
+                    "all event times that are below -5 and above 5, respectively."),
+          digits = 4, type = table_type, header = FALSE)
+
+
+```
 
 
 
+```{r Event Study Plot with Thresholds}
 
-
-
+```
 
 
 
