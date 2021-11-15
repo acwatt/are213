@@ -45,6 +45,7 @@ table_type = "latex"
 
 ```{r packages, include=F}
 # install.packages("Synth")
+# install.packages('kableExtra')
 library(tidyverse)
 library(haven)
 library(stargazer)
@@ -122,6 +123,8 @@ min_j_inclusive = max(df_temp$min_j, na.rm = T)
 max_j = max(filter(data, j<99)$j, na.rm = T)
 min_j = min(filter(data, j<99)$j, na.rm = T)
 ```
+
+
 
 ```{r max-min-event-times-table}
 data.frame(max_j = max_j, min_j = min_j) %>%
@@ -263,12 +266,7 @@ stargazer(reg_1a, reg_1b,
           title = "Event Study Regressions\\label{tab:event-study-dummy-trap}",
           dep.var.caption = "Log(Fatality per Population)",
           dep.var.labels.include = FALSE,
-          # model.names = FALSE,
           column.labels = c("Event Study a", "Event Study b"),
-          # keep = paste0('^j', (-5):5, '$'),
-          # order = paste0('/^t_', (-5):5, '$/'),
-          # perl = T,
-          # covariate.labels = as.character((-5:5)),
           omit = c("state", "year"),
           add.lines=list(c('Chose dummy to omit', 'No', 'Yes')),
           font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE,
@@ -344,15 +342,10 @@ reg_1c = df_threshold_dummies %>%
 
 ```{r Event Study table with Thresholds, results='asis'}
 stargazer(reg_1c,
-          title = "Event Study Regression with Threshold Indicators\\label{tab:event-study-thresholds}",
+          title = "Event Study Regression with Threshold Indicators\\label{tab:event-study-remove-controls}",
           dep.var.caption = "Log(Fatality per Population)",
           dep.var.labels.include = FALSE,
-          # model.names = FALSE,
           column.labels = c("Event Study c"),
-          # keep = paste0('^j', (-5):5, '$'),
-          # order = paste0('/^t_', (-5):5, '$/'),
-          # perl = T,
-          # covariate.labels = as.character((-5:5)),
           omit = c("state", "year"),
           add.lines=list(c('Chose dummy to omit', 'Yes'), c('Agg. Threshold Indicators', 'Yes')),
           font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE,
@@ -362,15 +355,69 @@ stargazer(reg_1c,
                     "all event times that are below -5 and above 5, respectively."),
           digits = 4, type = table_type, header = FALSE)
 
+plot_text1 = "(red) Plot of all possible event-time coefficients and 95\\% confidence intervals from Table \\ref{tab:event-study-dummy-trap}; (blue) plot of event-time coefficients and 95\\% confidence intervals for event-times from years before the passage of the primary seat belt law to 5 years after and coefficents for aggregate event-time indicators of more than 5 years before and more than 5 years after the law passed, plotted at x-values of -6 and 6, respectively (from Table \\ref{tab:event-study-thresholds})"
 
 ```
 
 
 
-```{r Event Study Plot with Thresholds}
+```{r Event Study Plot with Thresholds, fig.width=8, fig.cap=plot_text1}
+new_varname = function(oldname, min_value, max_value) {
+    name = str_replace_all(oldname, "`","")
+    name = str_replace(name, "_ET", "")
+    name = str_replace(name, "below", paste("<", min_value))
+    name = str_replace(name, "above", paste(">", max_value))
+    return(name)
+}
 
+xvalue = function(oldname, min_value = NULL, max_value = NULL) {
+    name = str_replace_all(oldname, "`","")
+    name = str_replace(name, "_ET", "")
+    if (!is.null(min_value)) {
+        name = str_replace(name, "below", as.character(min_value - 1))
+        name = str_replace(name, "above", as.character(max_value + 1))
+    }
+    return(as.numeric(name))
+}
+
+regression_dataframe = function(reg, reg_type, min_value = NULL, max_value = NULL, suffix = 'ET') {
+    df = data.frame(coef = names(reg$coefficients), 
+                    value = reg$coefficients,
+                    lower = confint(reg)[,1],
+                    upper = confint(reg)[,2],
+                    reg_type = reg_type) %>%
+        filter(grepl(suffix, coef)) %>%
+        mutate(x_tick = new_varname(coef, min_value, max_value),
+               event_time = xvalue(coef, min_value, max_value)) %>%
+        return()
+}
+
+df1 = rbind(
+    regression_dataframe(reg_1b, "all indicators"),
+    regression_dataframe(reg_1c, "max-min indicators", min_value = -5, max_value = 5)
+)
+
+df1 %>%
+    ggplot(aes(x=event_time, y=value, color = reg_type)) + 
+    geom_errorbar(aes(ymin=lower, ymax=upper), width=.1) +
+    geom_line() +
+    geom_point() +
+    geom_hline(yintercept = 0) +
+    labs(color = "Parameters estimated") +
+    xlab("Event Time (years since passage of primary seat belt law)") +
+    ylab("Coefficient Value") +
+    annotate(geom = "segment", x = 3, y = -0.3, xend = 5.7, yend = -0.14,
+             arrow = arrow(length = unit(2, "mm"))) +
+    annotate(geom = "text", x = 3, y = -0.32, 
+             label = "(blue) coeffcient on >5 years after passage", 
+             hjust = "center") +
+    annotate(geom = "segment", x = -4.5, y = -0.15, xend = -5.9, yend = 0.018,
+             arrow = arrow(length = unit(2, "mm"))) +
+    annotate(geom = "text", x = -8, y = -0.17, 
+             label = "(blue) coeffcient on >5 years before passage", 
+             hjust = "center")
+    
 ```
-
 
 
 
@@ -386,13 +433,78 @@ states from your sample? What about if you exclude the pure controls in part
 (c)?**
 
 
+```{r Regressions excluding pure control states}
+# Regression with all possible event-time indicators, removing pure control states
+reg_1b2 = df_all_dummies %>%
+    group_by(state) %>%
+    filter(mean(primary) > 0) %>%
+    mutate(state=factor(state), year=factor(year)) %>%
+    select(ln_fat_pc, state, year, contains('_ET'), -`-1_ET`) %>%
+    lm(ln_fat_pc ~ ., data = .)
+
+# Regression with max, min aggregated event-time indicators, removing pure control states
+reg_1c2 = df_threshold_dummies %>%
+    group_by(state) %>%
+    filter(mean(primary) > 0) %>%
+    mutate(state=factor(state), year=factor(year)) %>%
+    select(ln_fat_pc, state, year, contains('_ET'), -`-1_ET`) %>%
+    lm(ln_fat_pc ~ ., data = .)
+
+```
+
+
+```{r Event study table dropping pure controls, results='asis'}
+stargazer(reg_1b, reg_1b2, reg_1c, reg_1c2,
+          title = "Event Study Regressions without Pure Control States\\label{tab:event-study-no-controls}",
+          dep.var.caption = "Log(Fatality per Population)",
+          dep.var.labels.include = FALSE,
+          column.labels = c("All indicators",
+                            "All indicators",
+                            "Min-max indicators",
+                            "Min-max indicators"),
+          omit = c("state", "year"),
+          add.lines=list(c('Agg. Threshold Indicators', 'No', 'No', 'Yes', 'Yes'), 
+                         c('Include Pure Controls', 'Yes', 'No', 'Yes', 'No')),
+          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE,
+          omit.stat=c("f", "ser"),
+          single.row = TRUE,
+          digits = 4, type = table_type, header = FALSE)
+
+
+```
 
 
 
+For the all-event-times-indicators regressions from part (b), we can see in
+Table \\ref{tab:event-study-remove-controls} that for event-time indicators
+after the primary seat belt law is passed (event times $\geq 0$), the
+coefficients change from being all negative and mostly significant to being all
+insignificant at the 0.1 level and mixed signs. Interestingly, the coefficients
+on the event-time indicators for times before the passage of the law become
+significantly negative -- indicating that the passage of the law might have
+caused an increase in traffic fatalities in states in the treatment group (i.e.,
+the effect of treatment on the treated might be the opposite sign we expect).
+However, we also should note that the coefficient on event time 19 (19 years
+after the passage of the law) is dropped by the regression because of
+colinearity -- without pure control states, the combination of state and year
+fixed effects with indicators for all but one event times becomes colinear.
 
+Because we have omitted the coefficient on event time 19 and event time 0, we
+cannot readily interpret the coefficients in column (2) of Table
+\\ref{tab:event-study-remove-controls}.
 
-
-
+If we focus on columns (3) and (4) from Table
+\\ref{tab:event-study-remove-controls}, we can see removing the pure control
+states (column 4) reduces the significance and magnitude of all our
+coefficients, but the last two coeffcients for event time 5 (`5\\_ET') and the
+aggregate of all event times greater than 5 (above\\_ET) are still signficant
+and negative. One way to interpret this is that the treatment effect on the
+treated is smaller than that of the average treatment effect. We also could
+hypothesize that the states that passed the primary seat belt laws during our
+study period were doing something other than passing the primary law and
+something different from the pure control states to reduce traffic fatalities,
+so our comparison within the treatment states (column 4) estimates a smaller
+effect than when we compare our treated states to the pure control states.
 
 
 
