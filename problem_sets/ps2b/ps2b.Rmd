@@ -421,7 +421,10 @@ df1 %>%
 
 
 
-
+<!--
+We could add another regression here where we prune the data to be balanced in
+event time with threshold dummies.
+-->
 
 
 
