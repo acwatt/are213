@@ -623,7 +623,52 @@ site to that of the average of all the “control” states. Next, graph the
 pre-period log traffic fatalities by year for the pre-period for both the TU and
 the average of the control group. Interpret.**
 
+```{r Compare averages between TU and all controls}
+# Calculate average pre-period log traffic fatalities per capita
+preperiod_years = data %>%
+    filter(state == 99, primary == 0) %>%
+    select(year)
 
+means = data %>%
+    group_by(state) %>%
+    # previously set j = 99 for pure control states (mean(primary) = 0)
+    mutate(control = ifelse(mean(primary) > 0, 0, 1)) %>%
+    filter(control == 1 | state == 99) %>%
+    filter(year %in% preperiod_years$year) %>%
+    group_by(control) %>%
+    summarize(avg = mean(ln_fat_pc))
+means %>%
+    select(avg) %>%  # control = 0 on top ==> TU on top
+    t() %>%  # control = 0 on left ==> TU on left
+    kbl(caption = "Average Pre-period log(traffic fatalities per capita)\\label{tab:avg-fat-TU}",
+        col.names = c('Aggregate Treatment State', 'Aggregate Control State'),
+        row.names = F,
+        align = 'cc') %>%
+    kable_styling(latex_options = "HOLD_position")
+```
+
+<!-- Reference: Table \ref{tab:avg-fat-TU} -->
+
+```{r Plot: pre-trends}
+data %>%
+    group_by(state) %>%
+    # previously set j = 99 for pure control states (mean(primary) = 0)
+    mutate(control = ifelse(mean(primary) > 0, 0, 1),
+           treated = ifelse(state == 99, 1, 0)) %>%
+    filter(control == 1 | state == 99) %>%
+    filter(year %in% preperiod_years$year) %>%
+    group_by(year, treated) %>%
+    summarize(year_avg = mean(ln_fat_pc)) %>%
+    ggplot(aes(x=year, y=year_avg, color=factor(treated))) +
+    geom_line() +
+    geom_point() +
+    geom_hline(yintercept = filter(means, control==0)$avg, color='cyan') +
+    geom_hline(yintercept = filter(means, control==1)$avg, color='red') +
+    labs(color = "Treated") +
+    xlab("Year") +
+    ylab("log(Fatalities per capita)") +
+    ggtitle("Pre-period annual avereage log(Fatalilties per capita)")
+```
 
 
 
