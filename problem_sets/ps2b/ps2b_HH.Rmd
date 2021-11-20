@@ -1,0 +1,57 @@
+---
+title: "ps2b"
+author: "Hamza Husain"
+date: "11/19/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Loading packages}
+library(pacman)
+p_load(dplyr, tidyverse, readr, knitr, ggplot2, stargazer, here, data.table, janitor, epiDisplay, foreign, haven)
+```
+
+```{r Reading data}
+dta_folder <- "~/Library/Mobile Documents/com~apple~CloudDocs/BerkeleyARE/SecondYear/Fall/are213/problem_sets/ps2b"
+setwd(dta_folder)
+
+df<- read_dta("traffic_safety2.dta") %>% 
+  arrange(state,year)
+tab1(df$state)
+length(unique(df$state)) #49 states 
+sapply(df, class)
+```
+
+```{r 1a}
+tab1(df$year)
+length(unique(df$year)) #23 years
+
+browse <- df %>% 
+  select(year, state, primary)
+View(browse)
+
+event_years <- df %>% #figuring out event year for each state
+  select(year,state,primary) %>%
+  group_by(state) %>% 
+  mutate(event = primary - lag(primary)) %>% 
+  mutate(event = ifelse(is.na(event), 0, event)) %>% 
+  filter(event == 1) %>% 
+  select(-primary, -event) %>% 
+  rename(event_year = year)
+  
+df_1a <- left_join(df, event_years, by = "state") %>% #merging event year to original data
+  mutate(event_time = year - event_year)
+
+epiDisplay::tab1(df_1a$event_time)
+
+summary_eventtimes <- df_1a %>% #looking at min and max event times by state
+  select(state, year, event_year, event_time) %>% 
+  group_by(state) %>% 
+  summarise(min_eventtime = min(event_time), max_eventtime = max(event_time))
+
+
+```
+
