@@ -18,7 +18,7 @@ header-includes:
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'ARE_213_PS2b.pdf')) })
 ---
 
-```{r setup, include=FALSE}
+```{r setup}
 rm(list=ls())
 knitr::opts_chunk$set(echo = F)
 ```
@@ -37,30 +37,23 @@ to the ps2b/ folder
 # stargazer table type (html, latex, or text)
 # Change to latex when outputting to PDF, html when outputting to html
 table_type = "latex"
-
+Cache = TRUE
 ```
 
 
 
 
-```{r packages, include=F}
+```{r packages}
 # install.packages("Synth")
-# install.packages('kableExtra')
 library(tidyverse)
 library(haven)
 library(stargazer)
 library(ggplot2)
 library(tinytex)
-library(Synth)
 library(kableExtra)
-# library(plm)
-# library(lmtest)
-# library(sandwich)
-# library(gridExtra)
-# library(grid)
-# library(gtable)
 library(fastDummies)
-# library(EnvStats)
+library(Synth)
+library(progress)
 ```
 
 
@@ -79,7 +72,7 @@ using all the event time indicators. What happens?**
 \vspace{1em}
 
 
-```{r Load Data, eval=T}
+```{r Load Data, eval=T, cache=Cache}
 # Load data from PS2a with previous log variables
 data = read_dta('traffic_safety2.dta') %>%
     mutate(fat_pc = fatalities/population,
@@ -501,8 +494,8 @@ cannot readily interpret the coefficients in column (2) of Table
 If we focus on columns (3) and (4) from Table
 \ref{tab:event-study-no-controls}, we can see removing the pure control
 states (column 4) reduces the significance and magnitude of all our
-coefficients, but the last two coeffcients for event time 5 (`5\_ET') and the
-aggregate of all event times greater than 5 (above\_ET) are still signficant
+coefficients, but the last two coefficients for event time 5 (`5\_ET') and the
+aggregate of all event times greater than 5 (above\_ET) are still significant
 and negative. One way to interpret this is that the treatment effect on the
 treated is smaller than that of the average treatment effect. We also could
 hypothesize that the states that passed the primary seat belt laws during our
@@ -626,7 +619,9 @@ the average of the control group. Interpret.**
 # Calculate average pre-period log traffic fatalities per capita
 preperiod_years = data %>%
     filter(state == 99, primary == 0) %>%
-    select(year)
+    select(year) %>%
+    unlist(.) %>%
+    as.numeric(.)
 
 data2 = data %>%
     group_by(state) %>%
@@ -635,7 +630,7 @@ data2 = data %>%
     filter(control == 1 | state == 99)
 
 means = data2 %>%
-    filter(year %in% preperiod_years$year) %>%
+    filter(year %in% preperiod_years) %>%
     group_by(control) %>%
     summarize(avg = mean(ln_fat_pc))
 
@@ -655,7 +650,7 @@ means %>%
 ```{r Plot: pre-trends, message=F}
 # Plot log fat per cap for pre-treatment years, for treatment and control
 data2 %>%
-    filter(year %in% preperiod_years$year) %>%
+    filter(year %in% preperiod_years) %>%
     group_by(year, treated) %>%
     summarize(year_avg = mean(ln_fat_pc)) %>%
     ggplot(aes(x=year, y=year_avg, color=factor(treated))) +
@@ -663,7 +658,7 @@ data2 %>%
     geom_point() +
     geom_hline(yintercept = filter(means, control==0)$avg, color='cyan') +
     geom_hline(yintercept = filter(means, control==1)$avg, color='red') +
-    labs(color = "Primary Seatbelt Law") +
+    labs(color = "Will Enact\n Seatbelt Law") +
     xlab("Year") +
     ylab("log(Fatalities per capita)") +
     ggtitle("Pre-period annual avereage log(Fatalilties per capita)") +
@@ -692,18 +687,18 @@ state?**
 ```{r Compare dependent var, message=F}
 # Compare log(fat per cap) for last pre-treatment year, for treatment and each control
 treat_val = (data2 %>% 
-    filter(year == tail(preperiod_years$year, n=1),
+    filter(year == tail(preperiod_years, n=1),
            state == 99))$ln_fat_pc
 
 data2 %>%
-    filter(year == tail(preperiod_years$year, n=1)) %>%
+    filter(year == tail(preperiod_years, n=1)) %>%
     filter(control == 1 | state == 99) %>%
     mutate(diff = abs(treat_val - ln_fat_pc)) %>%
     arrange(diff) %>%
     select(ln_fat_pc, diff) %>%
     # head() %>%
     kbl(caption = paste("Dependent variable in",
-                        tail(preperiod_years$year, n=1),
+                        tail(preperiod_years, n=1),
                         "for treated (99) and control states\\label{tab:1985-depvar}"),
         col.names = c('State ID', 'log(fatatilities per captia)', 
                       'Absolute difference between this state and treated'),
@@ -716,17 +711,17 @@ that is closest to the aggregate treatment state in the dependent variable.
 
 
 
-```{r Compare other vars fro 47 and 99, message=F}
+```{r Compare other vars for 47 and 99, message=F}
 # Compare covariates for last pre-treatment year, for treatment and control 47
 data2 %>%
-    filter(year == tail(preperiod_years$year, n=1)) %>%
+    filter(year == tail(preperiod_years, n=1)) %>%
     filter(state %in% c(47, 99)) %>%
     select(college, beer, population, unemploy, totalvmt, precip,
            snow32, rural_speed, urban_speed, fat_pc) %>%
     round(4) %>%
     t() %>%
     kbl(caption = paste("Dependent variable in",
-                        tail(preperiod_years$year, n=1),
+                        tail(preperiod_years, n=1),
                         "for treated (99) and control states\\label{tab:1985-covar}"),
         col.names = c('Control State 47', 'Aggregate Treatment State'),
         align = 'cc') %>%
@@ -774,47 +769,165 @@ be provided in Stata and R only). Please be sure to state precisely what the
 command is doing and how you determined your preferred specification.**
 
 
-```{r Prepare the data}
-control_states = data2 %>%
-    filter(year == tail(preperiod_years$year, n=1)) %>%
-    filter(control == 1) %>%
-    select(state)
+```{r Aarons Synth Function}
+apply_synth = function(data, predictors_, treated_unit=99) {
+    # Create list of all years in sample
+    all_years = data %>%
+        arrange(year) %>%
+        select(year) %>%
+        unique() %>%
+        unlist(.) %>%
+        as.numeric(.)
+    
+    # Create list of pre-treatment years
+    preperiod_years = data %>%
+        filter(state == 99, primary == 0) %>%
+        select(year) %>%
+        unlist(.) %>%
+        as.numeric(.)
+    
+    # Create list of control states
+    control_states = data %>%
+        group_by(state) %>%
+        mutate(control = ifelse(mean(primary) > 0, 0, 1)) %>%
+        filter(year == tail(preperiod_years, n=1)) %>%
+        # need to make sure we don't select the treated unit (for the placebo tests)
+        filter(control == 1, state != treated_unit) %>%
+        select(state) %>%
+        unlist(.) %>%
+        as.numeric(.)
+    
+    # Create lookup table of state names to join onto data
+    state_ids = data.frame(attr(data$state, 'label'))[,1]
+    state_names = rownames(data.frame(attr(data$state, 'label')))
+    state_names_df = data.frame(state = state_ids,
+                                state_name = state_names,
+                                stringsAsFactors=FALSE)
+    
+    # Prepare data for Synth
+    # sink("sink")  # Silence output
+    dataprep.out = data %>%
+        mutate(state = as.numeric(unlist(state))) %>%
+        left_join(state_names_df, by='state') %>%  # add state_name
+        data.frame(.) %>%
+        dataprep(foo = .,
+                 predictors = predictors_,
+                 time.predictors.prior = preperiod_years,
+                 dependent = "ln_fat_pc",
+                 unit.variable = "state",
+                 unit.names.variable = "state_name",
+                 time.variable = "year",
+                 treatment.identifier = treated_unit,
+                 controls.identifier = control_states,
+                 time.optimize.ssr = preperiod_years,
+                 time.plot = all_years
+        )
+    
+    # Run Synth to create weighted control
+    synth.out <- invisible(synth(data.prep.obj = dataprep.out,
+                       method = "BFGS"))
+    # closeAllConnections()  # un-silence output
+    
+    return(list(
+        dataprep.out = dataprep.out, 
+        synth.out = synth.out
+    ))
+}
 
-all_years = data %>%
-    arrange(year) %>%
-    select(year) %>%
-    unique()
 
-dataprep.out <-
-    dataprep(foo = data,
-             predictors = c("secondary" , "college" , "beer" ,
-                            "unemploy" , "ln_tvmt_pc" , "ln_precip", "snow32",
-                            "ln_rspeed", "ln_uspeed"),
-             time.predictors.prior = preperiod_years,
-             dependent = "ln_fat_pc",
-             unit.variable = "state",
-             time.variable = "year",
-             treatment.identifier = 99,
-             controls.identifier = control_states,
-             time.optimize.ssr = preperiod_years,
-             time.plot = all_years
-    )
+```
+
+Can't use rural or urban speed limits as predictors because they do not change
+across the control units.
+
+```{r Apply Synth1, cache=Cache}
+# Run Synth on preferred specification
+predictors1 = c("college" , "beer" , "unemploy" , "ln_tvmt_pc" , "ln_precip", "snow32")
+
+synth1 = apply_synth(data, predictors1)
+
+synth.tables <- synth.tab(dataprep.res = synth1$dataprep.out,
+                           synth.res = synth1$synth.out)
+
+```
+
+The Synth package calibrated the weights in a weighed average of the control states
+to fit the covariates of the aggregate treated unit. The weights were adjusted to
+minimize the sum of squared differences between the covariates of the control units
+and the covariates of the aggreagte treated unit, in the years before the treated
+unit was treated (`r min(preperiod_years)` - `r max(preperiod_years)`).
+
+The weights that minimize the sum of these distances are in Table \ref{tab:synth-weights}.
+
+```{r synth-weights-table}
+# Create table of Synth weights
+synth.tables$tab.w %>%
+    select(w.weights, unit.names) %>%
+  kbl(caption = "Synthetic Control Weights\\label{tab:synth-weights}",
+      col.names = c('Weight', 'State'),
+      align = 'cc',
+      row.names = F) %>%
+  kable_styling(latex_options = "HOLD_position")
+
+```
+
+There are sums of squared differences for each covariate -- instead of just taking
+a simple sum or average of these and picking control unit weights to minimize that sum,
+the Synth package creates weights for the covariates to create a weighted average of
+the sum of squared differences to minimize.
+The covariates were first used to predict the pre-treatment outcome for the treated
+unit, and covariates that have more power in predicting the outcome receive large weights,
+and are more important in generating the synthetic control weights. These weights are in Table
+\ref{tab:synth-cov-weights} and are used in a weighted sum of the squared differences to find the optimal control unit weights in constructing the synthetic control. We can that the
+weight is fairly even across covariates except that precipitation has absorbed
+the weight that snow would get -- probably because they are highly correlated.
+
+```{r synth-var-weights-table}
+# Create table of Synth variable weights
+synth.tables$tab.v %>%
+  kbl(caption = "Covariate Weights used sum of SSE's\\label{tab:synth-cov-weights}",
+      col.names = c('Covariate Weights'),
+      align = 'cc') %>%
+  kable_styling(latex_options = "HOLD_position")
+
+```
 
 
-# primary, college, beer, secondary, unemploy, ln_tvmt_pc, ln_precip, snow32, ln_rspeed, ln_uspeed
+
+The weighted synthetic control results in covariate balance Table \ref{tab:cov-balance}
+between the synthetic control and aggregate treated unit. We can see that the
+balance is very close in the pre-treatment periods, except under snow, but that
+was weighted very low in the synthetic control construction procedure because of
+its strong correlation with precipitation.
+
+```{r synth-cov-balance-table}
+# Create variable balance table
+synth.tables$tab.pred %>%
+    data.frame() %>%
+    select(Treated, Synthetic) %>%
+  kbl(caption = "Covariate Balance in Pre-treatment Periods\\label{tab:cov-balance}",
+      col.names = c('Treated', 'Synthetic'),
+      align = 'ccc') %>%
+  kable_styling(latex_options = "HOLD_position")
+
 ```
 
 
 
 
+```{r Plot Aggregate Treated and Synth}
+# Plot the TU and Synth control
+path.plot(synth.res = synth1$synth.out,
+           dataprep.res = synth1$dataprep.out,
+           Ylab = "log(Traffic Fatalities per Captia)",
+           Xlab = "year",
+           Ylim = c(-2,-1),
+           Legend = c("Aggregate Treatment State","Synthetic Control State"),
+           Main = "Traffic Fatalities before and after Primary Seat Belt Laws",
+           tr.intake = tail(preperiod_years, n=1)+1
+           )
 
-
-
-
-
-
-
-
+```
 
 
 
@@ -827,9 +940,82 @@ dataprep.out <-
 group under both your preferred specification and a few other specifications
 you tried.**
 
+```{r Synth2 and Synth3, include=F, cache=Cache}
+# Run Synth on two more specifications
+predictors2 = c("college" , "beer" , "unemploy" , "ln_tvmt_pc" , "ln_precip")
+synth2 = apply_synth(data, predictors2)
+predictors3 = c("college", "ln_precip")
+synth3 = apply_synth(data, predictors3)
+
+```
 
 
 
+```{r Plot the gaps using Synth, eval=F}
+# Plot the gaps of three specifications using Synth
+gaps.plot(synth.res = synth3$synth.out,
+           dataprep.res = synth3$dataprep.out,
+           Ylab = "gap in log(Traffic Fatalities per Captia)",
+           Xlab = "year",
+           Main = "Difference in Traffic Fatalities (Aggregate Treated vs. Synthetic Control)",
+           tr.intake = tail(preperiod_years, n=1)+1
+           )
+
+```
+
+
+```{r Plot the gaps using ggplot}
+# Retrieve gap between TU and synth control
+get_gaps = function(synth_out){
+    # Return vector of years and gaps between treated and synthetic control
+    # negative gap ==> treated is less than control
+    gaps = synth_out$dataprep.out$Y1plot -
+        (synth_out$dataprep.out$Y0plot %*% synth_out$synth.out$solution.w)
+    return(list(
+        year = as.numeric(rownames(gaps)),
+        gaps = as.numeric(gaps)
+    ))
+}
+
+gaps1 = get_gaps(synth1)
+gaps2 = get_gaps(synth2)
+gaps3 = get_gaps(synth3)
+
+gaps_df = rbind(
+    data.frame(Year = gaps1$year, gaps = gaps1$gaps, specification = '1 (preferred)'),
+    data.frame(Year = gaps2$year, gaps = gaps2$gaps, specification = '2'),
+    data.frame(Year = gaps3$year, gaps = gaps3$gaps, specification = '3 (limited)')
+)
+
+# Plot the preferred specification in ggplot
+gaps_df %>%
+    filter(specification == '1 (preferred)') %>%
+    ggplot(aes(x=Year, y=gaps)) +
+    geom_line() +
+    ylim(c(-0.22,0.1)) +
+    ylab("gap in log(Traffic Fatalities per Captia)") +
+    ggtitle('Difference in Traffic Fatalities (Aggregate Treated vs. Synthetic Control)',
+            subtitle='Preferred Specification') +
+    geom_hline(yintercept = 0, linetype = "dotted") +
+    geom_vline(xintercept = tail(preperiod_years, n=1)+1, linetype = "dotted")
+
+# Plot the gaps of three specifications using ggplot
+gaps_df %>%
+    ggplot(aes(x=as.integer(Year), y=gaps)) +
+  geom_line(aes(color = factor(specification))) + 
+  scale_color_manual(values = c("darkred", "steelblue", "orange")) +
+    ylim(c(-0.22,0.5)) +
+    xlab('Year') +
+    ylab("gap in log(Traffic Fatalities per Captia)") +
+    ggtitle('Difference in Traffic Fatalities (Aggregate Treated vs. Synthetic Control)',
+            subtitle='Various Specifications of Predictor Variables') +
+    labs(color = 'Specification') +
+    geom_hline(yintercept = 0, linetype = "dotted") +
+    geom_vline(xintercept = tail(preperiod_years, n=1)+1, linetype = "dotted") +
+  theme(legend.position = c(0.87, 0.8))
+
+
+```
 
 
 
@@ -848,8 +1034,75 @@ between each control state and its “placebo” treatment. Do you conclude that
 treatment was significant? Why or why not?**
 
 
+```{r Create placebo gaps, cache=Cache, warning=F}
+# Create list of control states
+control_states = data %>%
+    group_by(state) %>%
+    mutate(control = ifelse(mean(primary) > 0, 0, 1)) %>%
+    filter(year == tail(preperiod_years, n=1)) %>%
+    filter(control == 1) %>%
+    select(state) %>%
+    unlist(.) %>%
+    as.numeric(.)
+
+# Create list of all years in sample
+all_years = data %>%
+    arrange(year) %>%
+    select(year) %>%
+    unique() %>%
+    unlist(.) %>%
+    as.numeric(.)
+
+# Dataframe to store gaps results
+gaps_df2 = data.frame(Year = gaps1$year,
+                      gaps = gaps1$gaps,
+                      unit = 99,
+                      color = 'black')
+
+# Create a progress bar ... this might take a while
+progress = progress_bar$new(
+    format = " State :id [:bar] :percent eta: :eta",
+    total = length(control_states),
+    clear = FALSE, width= 60)
+
+# Create placebo synthetic controls for all control states
+for (state_id in control_states){
+    progress$tick(tokens = list(id = state_id))
+    # Run Synth for control state state_id, get placebo gaps
+    gaps_temp = invisible(get_gaps(apply_synth(data, 
+                                     predictors1, 
+                                     treated_unit = state_id)))
+    # Add gaps to dataframe
+    temp_df = data.frame(Year = gaps_temp$year,
+                         gaps = gaps_temp$gaps,
+                         unit = state_id,
+                         color = 'grey')
+    gaps_df2 = rbind(gaps_df2, temp_df)
+}
+
+```
 
 
+```{r Plot all the gaps}
+# Plot all the gaps (actual treatment estimate and control placebos)
+gaps_df2 %>%
+    ggplot(aes(x=as.integer(Year), y=gaps, group=unit)) +
+    geom_line(aes(color = color)) +
+    scale_color_identity() + scale_linetype_identity() +
+    ylim(c(min(gaps_df2$gaps), max(gaps_df2$gaps)+0.1)) +
+    xlab('Year') +
+    ylab("gap in log(Traffic Fatalities per Captia)") +
+    ggtitle('Difference in Traffic Fatalities between States and their Synthetic Control',
+            subtitle='Actual and Placebo Tests') +
+    geom_hline(yintercept = 0, linetype = "dotted") +
+    geom_vline(xintercept = tail(preperiod_years, n=1)+1, linetype = "dotted") +
+    theme(legend.position = c(0.75, 1), legend.title=element_blank()) +
+    scale_color_manual(labels = c("Treated vs Synthetic Control", 
+                                  "Control vs. Placebo Synthetic Control"), 
+                       values = c("black", "grey"))
+
+
+```
 
 
 
