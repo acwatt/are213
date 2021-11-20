@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r Loading packages}
 library(pacman)
-p_load(dplyr, tidyverse, readr, knitr, ggplot2, stargazer, here, data.table, janitor, epiDisplay, foreign, haven)
+p_load(dplyr, tidyverse, readr, knitr, ggplot2, stargazer, here, data.table, janitor, foreign, haven, fastDummies, jtools, dotwhisker)
 ```
 
 ```{r Reading data}
@@ -19,19 +19,30 @@ dta_folder <- "~/Library/Mobile Documents/com~apple~CloudDocs/BerkeleyARE/Second
 setwd(dta_folder)
 
 df<- read_dta("traffic_safety2.dta") %>% 
-  arrange(state,year)
-tab1(df$state)
-length(unique(df$state)) #49 states 
-sapply(df, class)
+  arrange(state,year) %>% 
+  mutate(fat_pc = fatalities/population,
+           ln_fat_pc = log(fat_pc),
+           ln_tvmt_pc = log(totalvmt/population),
+           ln_precip = log(precip),
+           ln_rspeed = log(rural_speed), 
+           ln_uspeed = log(urban_speed))
+
+# epiDisplay::tab1(df$state)
+# length(unique(df$state)) #49 states 
+# sapply(df, class)
 ```
 
-```{r 1a}
-tab1(df$year)
-length(unique(df$year)) #23 years
+1.) 
 
-browse <- df %>% 
-  select(year, state, primary)
-View(browse)
+a.) 
+
+```{r 1a}
+# epiDisplay::tab1(df$year)
+# length(unique(df$year)) #23 years
+# 
+# browse <- df %>% 
+#   select(year, state, primary)
+# View(browse)
 
 event_years <- df %>% #figuring out event year for each state
   select(year,state,primary) %>%
@@ -43,15 +54,59 @@ event_years <- df %>% #figuring out event year for each state
   rename(event_year = year)
   
 df_1a <- left_join(df, event_years, by = "state") %>% #merging event year to original data
-  mutate(event_time = year - event_year)
+  mutate(j = year - event_year )%>% 
+  mutate(j = ifelse(is.na(j), 99, j)) %>% 
+  filter(state != 99)
+  
 
-epiDisplay::tab1(df_1a$event_time)
+epiDisplay::tab1(df_1a$j)
 
-summary_eventtimes <- df_1a %>% #looking at min and max event times by state
-  select(state, year, event_year, event_time) %>% 
+summary_j <- df_1a %>% #looking at min and max event times by state
+  select(state, year, event_year, j) %>% 
   group_by(state) %>% 
-  summarise(min_eventtime = min(event_time), max_eventtime = max(event_time))
+  filter(j != 99) %>% 
+  summarise(min_j = min(j), max_j = max(j))
+
+min_j <- min(summary_j$min_j)
+max_j <- max(summary_j$max_j)
+j_order <- paste('j', min_j:max_j, sep='_')
+
+df_1a <- fastDummies::dummy_cols(df_1a, select_columns = "j", remove_first_dummy = F) %>% 
+  select(-j_99) %>%
+  relocate(all_of(j_order), .after = unemploy)
+#coding separate time indicator for each possible value of event time 
+
+df_1a_reg <- df_1a %>% 
+  select(year, state, ln_fat_pc, starts_with("j_")) %>% 
+  mutate(year = factor(year), state = factor(state))
+
+reg_1a <- lm(ln_fat_pc ~ ., df_1a_reg)
+summary(reg_1a)
+```
+
+The regression omits the dummy variable j_19 to avoid multicollinearity issues! 
+
+b.) 
+
+```{r 1b: Regression}
+df_1b_reg <- df_1a_reg %>% 
+  select(-"j_-1")
+
+reg_1b <- lm(ln_fat_pc ~ ., df_1b_reg)
+summary(reg_1b)
+```
+
+```{r 1b: Plot of event study coefficients}
+summ(reg_1b)
+
+df_1b_dw <- broom::tidy(reg_1b) %>% 
+  filter(grepl("j_", term))
+
+j_coefplot <- dwplot(df_1b_dw) + 
+  ggtitle("Event Study Coefficients") + 
+  theme(text = element_text(size = 6)) 
 
 
+j_coefplot
 ```
 
