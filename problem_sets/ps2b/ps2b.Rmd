@@ -18,9 +18,10 @@ header-includes:
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'ARE_213_PS2b.pdf')) })
 ---
 
-```{r setup, message=F}
+```{r setup, message=F, echo=F}
 rm(list=ls())
 knitr::opts_chunk$set(echo = F)
+
 ```
 <!--
 R version 3.6.3 (2020-02-29)
@@ -38,12 +39,14 @@ to the ps2b/ folder
 # Change to latex when outputting to PDF, html when outputting to html
 table_type = "latex"
 Cache = TRUE
+
 ```
 
 
 
 
-```{r packages}
+```{r packages, message=F, warning=F}
+# Packages
 # install.packages("Synth")
 library(haven)
 library(stargazer)
@@ -54,6 +57,7 @@ library(fastDummies)
 library(Synth)
 library(progress)
 library(tidyverse)
+
 ```
 
 
@@ -82,6 +86,7 @@ data = read_dta('traffic_safety2.dta') %>%
            ln_rspeed = log(rural_speed), 
            ln_uspeed = log(urban_speed)) %>%
     data.frame(.)
+
 ```
 
 
@@ -115,6 +120,8 @@ max_j_inclusive = min(df_temp$max_j, na.rm = T)
 min_j_inclusive = max(df_temp$min_j, na.rm = T)
 max_j = max(filter(data, j<99)$j, na.rm = T)
 min_j = min(filter(data, j<99)$j, na.rm = T)
+
+
 ```
 
 
@@ -125,6 +132,7 @@ data.frame(max_j = max_j, min_j = min_j) %>%
       col.names = c('Max j', 'Min j'),
       align = 'cc') %>%
   kable_styling(latex_options = "HOLD_position")
+
 ```
 
 Notice from Figure \ref{fig:max_event_time_distribution} that we have a wide
@@ -144,6 +152,7 @@ df_temp %>%
     ggplot(aes(x=max_j), data=.) +
     geom_histogram() +
     xlab("max event period")
+
 ```
 
 To estimate the event study treatment effects, corresponding regression equation is:
@@ -190,6 +199,7 @@ df_all_dummies = dummy_cols(data, select_columns = 'j') %>%
     filter(state != 99)  %>%
     relocate(all_of(name_order2)) %>% 
     rename_with(~ paste0(str_replace(., 'j_', ''), '_ET'), contains("j_"))
+
 ```
 
 We can see column (1) of  Table \ref{tab:event-study-dummy-trap} that the indicator for event time +19
@@ -197,6 +207,7 @@ was omitted for the regression. However, for interpretability, we'd rather have
 the treatment effects relative to a period closer to the year of initial treatment.
 
 ```{r Run dummy-trap event study regression}
+# Regression: dummy-trap event study
 reg_1a = df_all_dummies %>%
     mutate(state=factor(state), year=factor(year)) %>%
     select(ln_fat_pc, state, year, contains('_ET')) %>%
@@ -238,6 +249,7 @@ save one that you choose to omit. Generate a plot of the event study
 coefficients.**
 
 ```{r Omit t-1 dummy}
+# Regression: event study, omit t=-1
 reg_1b = df_all_dummies %>%
     mutate(state=factor(state), year=factor(year)) %>%
     select(ln_fat_pc, state, year, contains('_ET'), -`-1_ET`) %>%
@@ -255,6 +267,7 @@ coefficient estimates for after event time -1 are negative and all are signfican
 less than zero starting with event period 5.
 
 ```{r event-study-table, results='asis'}
+# Event Study Table
 stargazer(reg_1a, reg_1b,
           title = "Event Study Regressions\\label{tab:event-study-dummy-trap}",
           dep.var.caption = "Log(Fatality per Population)",
@@ -307,7 +320,6 @@ create_dummies_threshold = function(df, colname, min_value, max_value, suffix = 
     return(df1)
 }
 
-
 # Create Dummies that make a balanced panel
 # (only dummies for event times j that are shared across all states)
 df_threshold_dummies = create_dummies_threshold(data,
@@ -319,6 +331,7 @@ df_threshold_dummies = create_dummies_threshold(data,
 ```
 
 ```{r Regression with threshold event time dummies}
+# Regression: event study, threshold dummies
 reg_1c = df_threshold_dummies %>%
     mutate(state=factor(state), year=factor(year)) %>%
     select(ln_fat_pc, state, year, contains('_ET'), -`-1_ET`) %>%
@@ -328,6 +341,7 @@ reg_1c = df_threshold_dummies %>%
 
 
 ```{r Event Study table with Thresholds, results='asis'}
+# Event study table
 stargazer(reg_1c,
           title = "Event Study Regression with Threshold Indicators\\label{tab:event-study-thresholds}",
           dep.var.caption = "Log(Fatality per Population)",
@@ -342,6 +356,7 @@ stargazer(reg_1c,
                     "all event times that are below -5 and above 5, respectively."),
           digits = 4, type = table_type, header = FALSE)
 
+# Text used in below figure (inserted using R markdown chunk arguments)
 plot_text1 = "(red) Plot of all possible event-time coefficients and 95\\% confidence intervals from Table \\ref{tab:event-study-dummy-trap}; (blue) plot of event-time coefficients and 95\\% confidence intervals for event-times from years before the passage of the primary seat belt law to 5 years after and coefficents for aggregate event-time indicators of more than 5 years before and more than 5 years after the law passed, plotted at x-values of -6 and 6, respectively (from Table \\ref{tab:event-study-thresholds})"
 
 ```
@@ -349,6 +364,7 @@ plot_text1 = "(red) Plot of all possible event-time coefficients and 95\\% confi
 
 
 ```{r Event Study Plot with Thresholds, fig.width=8, fig.cap=plot_text1}
+# Function to create new varname from old
 new_varname = function(oldname, min_value, max_value) {
     name = str_replace_all(oldname, "`","")
     name = str_replace(name, "_ET", "")
@@ -357,6 +373,7 @@ new_varname = function(oldname, min_value, max_value) {
     return(name)
 }
 
+# Function to extract value from varname string
 xvalue = function(oldname, min_value = NULL, max_value = NULL) {
     name = str_replace_all(oldname, "`","")
     name = str_replace(name, "_ET", "")
@@ -367,6 +384,7 @@ xvalue = function(oldname, min_value = NULL, max_value = NULL) {
     return(as.numeric(name))
 }
 
+# Function to return a dataframe of regression results
 regression_dataframe = function(reg, reg_type, min_value = NULL, max_value = NULL, suffix = 'ET') {
     df = data.frame(coef = names(reg$coefficients), 
                     value = reg$coefficients,
@@ -384,6 +402,7 @@ df1 = rbind(
     regression_dataframe(reg_1c, "max-min indicators", min_value = -5, max_value = 5)
 )
 
+# Plot the event-time regression coefficients
 df1 %>%
     ggplot(aes(x=event_time, y=value, color = reg_type)) + 
     geom_errorbar(aes(ymin=lower, ymax=upper), width=.1) +
@@ -405,17 +424,6 @@ df1 %>%
              hjust = "center")
     
 ```
-
-
-
-<!--
-We could add another regression here where we prune the data to be balanced in
-event time with threshold dummies.
-
-Also could do post-treatment event time indicators interacted with treatment cohort
-indicators and plot a graph of the different cohort-specific treatment estimates
--->
-
 
 
 
@@ -447,6 +455,7 @@ reg_1c2 = df_threshold_dummies %>%
 
 
 ```{r Event study table dropping pure controls, results='asis'}
+# Event study table dropping pure controls
 stargazer(reg_1b, reg_1b2, reg_1c, reg_1c2,
           title = "Event Study Regressions with and without Pure Control States\\label{tab:event-study-no-controls}",
           dep.var.caption = "Log(Fatality per Population)",
@@ -567,7 +576,9 @@ generate the interaction weighted event study estimator.
 -->
 
 ```{r fig text2}
+# Text used fro below figure caption
 plot_text2 = "Plot of Sun-and-Abraham(2020)-style cohort-by-event-time coefficients."
+
 ```
 
 
@@ -596,6 +607,7 @@ create_interacted_indicators = function(df, col1, col2) {
     return(df1)
 }
 
+# Regression with cohort interactions
 reg_1f = data %>%
     filter(state != 99) %>%
     create_interacted_indicators(., 'j', 'event_year') %>%
@@ -603,6 +615,7 @@ reg_1f = data %>%
     select(ln_fat_pc, state, year, contains('inter_'), -contains('_n1_')) %>%
     lm(ln_fat_pc ~ ., data = .)
 
+# Regression results dataframe
 reg_1f_df = data.frame(summary(reg_1f)$coefficients) %>%
     mutate(var = row.names(.)) %>%
     # select(var, everything()) %>%
@@ -622,11 +635,12 @@ reg_1f_df %>%
     xlab("Event Time (years since passage of primary seat belt law)") +
     ylab("Coefficient Value")
 
+# Text for below figure caption
 plot_text3 = "Plot of cohort-weighted avereage event-time coefficents -- weighted using the number of states in each cohort"
+
 ```
 
 ```{r Plot of cohort-weighted event time treatment effects, fig.width=8, fig.cap=plot_text3}
-
 # Calculate treatment effect weights for each combination of event time and event year
 for (i in (1:nrow(reg_1f_df))) {
     t_ = reg_1f_df[i, 'event_time']
@@ -641,7 +655,7 @@ for (i in (1:nrow(reg_1f_df))) {
     reg_1f_df[i, 'event_time_weight'] = numerator / denominator
 }
 
-# Calculate weighted average of treatment effects for a given event time '#7CAE00'
+# Calculate weighted average of treatment effects for a given event time
 reg_1f_df %>%
     group_by(event_time) %>%
     summarize(value = weighted.mean(est, event_time_weight)) %>%
@@ -656,6 +670,8 @@ reg_1f_df %>%
     labs(color = "Parameters estimated") +
     xlab("Event Time (years since passage of primary seat belt law)") +
     ylab("Coefficient Value")
+
+
 ```
 
 
@@ -701,6 +717,9 @@ pre-period log traffic fatalities by year for the pre-period for both the TU and
 the average of the control group. Interpret.**
 
 ```{r Compare averages between TU and all controls}
+###################################
+#  PROBLEM 2
+###################################
 # Calculate average pre-period log traffic fatalities per capita
 preperiod_years = data %>%
     filter(state == 99, primary == 0) %>%
@@ -719,6 +738,7 @@ means = data2 %>%
     group_by(control) %>%
     summarize(avg = mean(ln_fat_pc))
 
+# Create table to show difference in pre-treatment outcome means
 means %>%
     select(avg) %>%  # control = 0 on top ==> TU on top
     t() %>%  # control = 0 on left ==> TU on left
@@ -754,6 +774,7 @@ data2 %>%
              label = "Average for the aggregate\n treated unit over pre-periods", 
              hjust = "center")
 
+
 ```
 
 
@@ -775,6 +796,7 @@ treat_val = (data2 %>%
     filter(year == tail(preperiod_years, n=1),
            state == 99))$ln_fat_pc
 
+# Table of state differences in pre-period outcomes compared to TU
 data2 %>%
     filter(year == tail(preperiod_years, n=1)) %>%
     filter(control == 1 | state == 99) %>%
@@ -790,6 +812,7 @@ data2 %>%
         row.names = F,
         align = 'cc') %>%
     kable_styling(latex_options = "HOLD_position")
+
 ```
 We can see from Table \ref{tab:1985-depvar} that state \# 47 is the control state
 that is closest to the aggregate treatment state in the dependent variable.
@@ -811,6 +834,8 @@ data2 %>%
         col.names = c('Control State 47', 'Aggregate Treatment State'),
         align = 'cc') %>%
     kable_styling(latex_options = "HOLD_position")
+
+
 ```
 
 From Table \ref{tab:1985-covar}, we can see that there are identical speed
@@ -876,6 +901,7 @@ command is doing and how you determined your preferred specification.**
 
 
 ```{r Aarons Synth Function wrapper, message=F}
+# Function to create inputs for Synth dataprep and synth functions
 apply_synth = function(data, predictors_, treated_unit=99) {
     # Create list of all years in sample
     all_years = data %>%
@@ -911,7 +937,6 @@ apply_synth = function(data, predictors_, treated_unit=99) {
                                 stringsAsFactors=FALSE)
     
     # Prepare data for Synth
-    # sink("sink")  # Silence output
     dataprep.out = data %>%
         mutate(state = as.numeric(unlist(state))) %>%
         left_join(state_names_df, by='state') %>%  # add state_name
@@ -931,8 +956,7 @@ apply_synth = function(data, predictors_, treated_unit=99) {
     
     # Run Synth to create weighted control
     synth.out <- invisible(synth(data.prep.obj = dataprep.out, method = "BFGS"))
-    # closeAllConnections()  # un-silence output
-    
+
     return(list(
         dataprep.out = dataprep.out, 
         synth.out = synth.out
@@ -1126,12 +1150,14 @@ gaps_df %>%
 ```
 
 ```{r specification table}
+# Create table showing variables included in different specifications
 predictors = unique(c(predictors1, predictors2, predictors3))
 spec_df = data.frame(predictor=predictors)
 for (i in 1:3) {
     # spec_df[, paste('Specification', i)] = 
     spec_df = spec_df %>%
-        mutate("Specification {i}" := ifelse(predictor %in% eval(as.symbol(paste0('predictors', i))), 'x', ''))
+        mutate("Specification {i}" :=
+                   ifelse(predictor %in% eval(as.symbol(paste0('predictors', i))), 'x', ''))
 }
 
 spec_df %>%
@@ -1141,6 +1167,8 @@ spec_df %>%
         row.names = F,
         align = 'cc') %>%
     kable_styling(latex_options = "HOLD_position")
+
+
 ```
 
 
@@ -1245,19 +1273,14 @@ gaps in (ii). [See Abadie et al. for an example]. Do you conclude that the
 treatment was significant? Why or why not?**
 
 ```{r MSPE ratio text}
+# Text used in below figure caption
 ratio_text = "Histogram of the ratios of Mean Squared Prediction Errors of the synthetic controls in the post-treatment compared to the pre-treatment years.\\label{fig:ratios}"
+
 ```
 
 
 ```{r historgram of MSPE ratios, fig.width=8, fig.cap=ratio_text, message=F, warning=F}
-MSPE = function(df, treatment_year) {
-    pretreat = filter(df, year < treatment_year)
-    posttreat = filter(df, year1 >= treatment_year)
-    SSEpre = sum(pretreat$gaps^2)
-    SSEpost = sum(posttreat$gaps^2)
-    return(SSEpost / SSEpre)
-}
-
+# Calculate Mean Squared Prediction Error ratios (post vs pre period, errors = gaps)
 MSPE_ratios = gaps_df2 %>%
     mutate(post = ifelse(Year > max(preperiod_years), 'post', 'pre')) %>%
     group_by(unit, post) %>%
@@ -1267,16 +1290,19 @@ MSPE_ratios = gaps_df2 %>%
     data.frame() %>%
     mutate(rank = dense_rank(desc(MSPE_post_pre)))
 
+# Treated unit post/pre ratio
 TU_ratio = MSPE_ratios %>%
     filter(unit == 99) %>% 
     select(contains('MSPE')) %>% unlist %>% unname
 
+# Treated unit's ranking in MSPE ratio
 TU_rank = MSPE_ratios %>%
     filter(unit == 99) %>% 
     select(contains('rank')) %>% unlist %>% unname
 
 total_ratios = nrow(MSPE_ratios)
 
+# Histogram of MSPE Ratios
 MSPE_ratios %>%
     ggplot(aes(x = MSPE_post_pre)) +
     geom_histogram() +
