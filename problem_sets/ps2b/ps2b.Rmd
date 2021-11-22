@@ -849,7 +849,17 @@ pre-treatment outcomes to construct a synthetic control group.**
 drawbacks.**
 
 
-The synthetic controls approach circumvents the issue of not having plausible control group by constructing one by weighting untreated units selected by weighting covariates based on their predictability of the pre-trement outcome. Even though this method does not calculate a standard error for the treatment effect in the conventional sense, it does allow us to test the believability of the treatment result via a placebo test (as long as the number of potential control units is sufficiently large). Synthetic controls become virtually impossible to use without sufficiently many potential controls because the placebo test is vital to the interpretability of the treatment effect. Essentially, synthetic controls is only as good as the number of potential control units.
+The synthetic controls approach circumvents the issue of not having plausible
+control group by constructing one by weighting untreated units selected by
+weighting covariates based on their predictability of the pre-treament outcome.
+Even though this method does not calculate a standard error for the treatment
+effect in the conventional sense, it does allow us to test the believability of
+the treatment result via a placebo test (as long as the number of potential
+control units is sufficiently large). Synthetic controls become virtually
+impossible to use without sufficiently many potential controls because the
+placebo test is vital to the interpretability of the treatment effect.
+Essentially, synthetic controls is only as good as the number of potential
+control units.
 
 
 
