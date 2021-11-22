@@ -45,7 +45,6 @@ Cache = TRUE
 
 ```{r packages}
 # install.packages("Synth")
-library(tidyverse)
 library(haven)
 library(stargazer)
 library(ggplot2)
@@ -54,6 +53,7 @@ library(kableExtra)
 library(fastDummies)
 library(Synth)
 library(progress)
+library(tidyverse)
 ```
 
 
@@ -930,8 +930,7 @@ apply_synth = function(data, predictors_, treated_unit=99) {
         )
     
     # Run Synth to create weighted control
-    synth.out <- invisible(synth(data.prep.obj = dataprep.out,
-                       method = "BFGS"))
+    synth.out <- invisible(synth(data.prep.obj = dataprep.out, method = "BFGS"))
     # closeAllConnections()  # un-silence output
     
     return(list(
@@ -946,7 +945,7 @@ apply_synth = function(data, predictors_, treated_unit=99) {
 Can't use rural or urban speed limits as predictors because they do not change
 across the control units.
 
-```{r Apply Synth1, cache=Cache, message=F}
+```{r Apply Synth1, cache=Cache, results='hide'}
 # Run Synth on preferred specification
 predictors1 = c("college" , "beer" , "unemploy" , "ln_tvmt_pc" , "ln_precip", "snow32")
 
@@ -1049,7 +1048,7 @@ path.plot(synth.res = synth1$synth.out,
 group under both your preferred specification and a few other specifications
 you tried.**
 
-```{r Synth2 and Synth3, include=F, cache=Cache}
+```{r Synth2 and Synth3, results='hide', cache=Cache}
 # Run Synth on two more specifications
 predictors2 = c("college" , "beer" , "unemploy" , "ln_tvmt_pc" , "ln_precip")
 synth2 = apply_synth(data, predictors2)
@@ -1159,7 +1158,7 @@ between each control state and its “placebo” treatment. Do you conclude that
 treatment was significant? Why or why not?**
 
 
-```{r Create placebo gaps, cache=Cache, warning=F, message=F}
+```{r Create placebo gaps, cache=Cache, results='hide'}
 # Create list of control states
 control_states = data %>%
     group_by(state) %>%
@@ -1241,29 +1240,81 @@ Based on this graph alone (before seeing the placebo test), we might conclude th
 
 ### ------ c.iii
 **Create a graph of the post-treatment/pre-treatment prediction ratios of the
-Mean Squared Prediction Errors (MSPE) for the actual and “plecebo” treatment
+Mean Squared Prediction Errors (MSPE) for the actual and “placebo” treatment
 gaps in (ii). [See Abadie et al. for an example]. Do you conclude that the
 treatment was significant? Why or why not?**
 
+```{r MSPE ratio text}
+ratio_text = "Histogram of the ratios of Mean Squared Prediction Errors of the synthetic controls in the post-treatment compared to the pre-treatment years.\\label{fig:ratios}"
+```
 
-```{r historgram of MSPE ratios}
+
+```{r historgram of MSPE ratios, fig.width=8, fig.cap=ratio_text, message=F, warning=F}
 MSPE = function(df, treatment_year) {
     pretreat = filter(df, year < treatment_year)
     posttreat = filter(df, year1 >= treatment_year)
-    SSEpre = sum(pretreat$gaps)
+    SSEpre = sum(pretreat$gaps^2)
+    SSEpost = sum(posttreat$gaps^2)
+    return(SSEpost / SSEpre)
 }
 
-gaps_df2 %>%
-    group_by(unit) %>%
-    # sum of pre-treatment squared gaps
-    # sum of post-treatment squared gaps
-    # ratio of post/pre MSE
-    summarize()
+MSPE_ratios = gaps_df2 %>%
+    mutate(post = ifelse(Year > max(preperiod_years), 'post', 'pre')) %>%
+    group_by(unit, post) %>%
+    summarize(MSPE = mean(gaps^2)) %>%
+    pivot_wider(names_from = post, values_from = MSPE) %>%
+    mutate(MSPE_post_pre = post / pre) %>%
+    data.frame() %>%
+    mutate(rank = dense_rank(desc(MSPE_post_pre)))
+
+TU_ratio = MSPE_ratios %>%
+    filter(unit == 99) %>% 
+    select(contains('MSPE')) %>% unlist %>% unname
+
+TU_rank = MSPE_ratios %>%
+    filter(unit == 99) %>% 
+    select(contains('rank')) %>% unlist %>% unname
+
+total_ratios = nrow(MSPE_ratios)
+
+MSPE_ratios %>%
+    ggplot(aes(x = MSPE_post_pre)) +
+    geom_histogram() +
+    ylab(paste('Count (of', length(control_states) + 1, 'synthetic control comparisons)')) +
+    xlab('post/pre MSPE ratio') +
+    geom_vline(aes(xintercept=TU_ratio, color='red')) +
+    annotate(geom = "text", x = TU_ratio, y = 10, 
+             label = paste(" MSPE post/pre ratio for actual Treatment Unit: ", round(TU_ratio,1)), 
+             hjust = "left", color = 'red') +
+    theme(legend.position = "none")
+    
 ```
 
 
 From the distribution of MSPEs, we see that our treatment cannot be ruled out as mere chance. It is not even more than one standard deviation from the mean MSPE of placebo tests.
 
+Since we have 30 control states, this gives us a total of 31 synthetic control
+comparisons. We can calculate the MSPE of the synthetic control compared to the
+Treatment Unit separately for the pre-treatment years and post-treatement years.
+Taking the post-pre ratio of MSPE gives us a sense of how divergent the Treatment
+Unit is from its synthetic control. We can do this for all 31 synthetic control
+experiments (30 placebos using the 30 controls, and the actual Treatment Unit).
+
+In \ref{fig:ratios}, we can see that the post/pre MSPE ratio falls somewhat on
+the right side of the distribution. We can calculate a p-value as the
+probability that the result we got was not just from random chance. This is the
+number of MSPE ratios that are equal to or greater than the Treatment Unit's
+MSPE ratio, divided by the total number of ratios. The p-value for our actual
+synthetic control estimate is `r round(TU_rank/total_ratios, 3)`, so we cannot
+reject the null hypothesis that the decrease in fatalities is merely from random
+variation in the data.
+
+\[
+\text{p-value} =
+\frac{\text{\# of MSPE ratios at or above the TU}}{\text{total \# of MSPE ratios}} =
+\frac{`r TU_rank`}{`r total_ratios`} =
+`r round(TU_rank/total_ratios, 3)`
+\]
 
 
 
