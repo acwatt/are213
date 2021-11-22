@@ -18,7 +18,7 @@ header-includes:
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'ARE_213_PS2b.pdf')) })
 ---
 
-```{r setup}
+```{r setup, message=F}
 rm(list=ls())
 knitr::opts_chunk$set(echo = F)
 ```
@@ -80,7 +80,8 @@ data = read_dta('traffic_safety2.dta') %>%
            ln_tvmt_pc = log(totalvmt/population),
            ln_precip = log(precip),
            ln_rspeed = log(rural_speed), 
-           ln_uspeed = log(urban_speed))
+           ln_uspeed = log(urban_speed)) %>%
+    data.frame(.)
 ```
 
 
@@ -268,12 +269,6 @@ stargazer(reg_1a, reg_1b,
 
 
 ```
-
-
-
-
-
-
 
 
 
@@ -553,11 +548,12 @@ Stata’s xi com- mand).
 
 • Some of the interactions between cohort indicators and event time indicators
 will generate constants, because the event time indicator is too early or too
-late to be identified for a given cohort. Think carefully about this. • In the
-case of the coefficients for j < -5 and j > 5, note that you will be averaging
-across cohorts and across event time coefficients.
+late to be identified for a given cohort. Think carefully about this.'
 
-• You will need to compute the share that each cohort con- tributes to each
+• In the case of the coefficients for j < -5 and j > 5, note that you will be
+averaging across cohorts and across event time coefficients.
+
+• You will need to compute the share that each cohort contributes to each
 event time indicator to get the right weights. E.g. suppose that the event time
 indicator for j = +5 were informed only by cohort 1, containing 3 states, and
 cohort 2, containing 1 state. Then the weights for event time indicator j = +5
@@ -566,12 +562,101 @@ would be 0.75 for cohort 1 and 0.25 for cohort 2.
 • The paper references an eventstudyweights Stata package to estimate the
 cohort-by-event-time weights. Be aware that (as of 2020) this package computes
 the implicit weights that a standard event study regression applies to each of
-the cohort- by-event time coefficients, not the weights that should be used to
+the cohort-by-event time coefficients, not the weights that should be used to
 generate the interaction weighted event study estimator.
 -->
 
+```{r fig text2}
+plot_text2 = "Plot of Sun-and-Abraham(2020)-style cohort-by-event-time coefficients."
+```
 
 
+```{r interacted weighted event study, fig.width=8, fig.cap=plot_text2}
+# Function for adding dummies to a dataframe for all interactions between two columns
+create_interacted_indicators = function(df, col1, col2) {
+    # Create dummies for each combination of non-constant interactions of col1 and col2
+    df1 = df %>% mutate("{col1}" := ifelse(eval(as.symbol(col1)) == 99, NA, eval(as.symbol(col1))),
+                        "{col2}" := ifelse(eval(as.symbol(col2)) == 99, NA, eval(as.symbol(col2))))
+    df1 = df
+    df1[, col1] = replace(df1[, col1], df1[, col1]==99, NA)
+    df1[, col2] = replace(df1[, col2], df1[, col2]==99, NA)
+    for (val1 in df1[, col1] %>% unique() %>% sort()) {
+        for (val2 in df1[, col2] %>% unique() %>% sort()) {
+            inter = as.integer(df1[, col1] == val1) * as.integer(df1[, col2] == val2)
+            inter = replace_na(inter, 0)
+            # Only keep the interaction if there is variation in the data
+            if (var(inter) > 0) {
+                name1 = ifelse(val1<0, paste0('n', abs(val1)), val1)
+                name2 = ifelse(val2<0, paste0('n', abs(val2)), val2)
+                name = paste('inter', name1, name2, sep='_')
+                df1[, name] = inter
+            }
+        }
+    }
+    return(df1)
+}
+
+reg_1f = data %>%
+    filter(state != 99) %>%
+    create_interacted_indicators(., 'j', 'event_year') %>%
+    mutate(state=factor(state), year=factor(year)) %>%
+    select(ln_fat_pc, state, year, contains('inter_'), -contains('_n1_')) %>%
+    lm(ln_fat_pc ~ ., data = .)
+
+reg_1f_df = data.frame(summary(reg_1f)$coefficients) %>%
+    mutate(var = row.names(.)) %>%
+    # select(var, everything()) %>%
+    rename(est = Estimate, SE = Std..Error, t = t.value, p = Pr...t..) %>%
+    filter(grepl('inter_', var)) %>%
+    separate(var, c('x', 'event_time', 'event_year')) %>%
+    select(-x) %>%
+    mutate(event_year = as.integer(event_year)) %>%
+    mutate(event_time = as.integer(str_replace(event_time, 'n', '-')))
+
+# Plot all event_year cohort treatment effects
+reg_1f_df %>%
+    ggplot(aes(x=event_time, y=est, color=factor(event_year))) +
+    geom_point() + geom_line() +
+    geom_hline(yintercept = 0) +
+    labs(color='Treatment Cohort') +
+    xlab("Event Time (years since passage of primary seat belt law)") +
+    ylab("Coefficient Value")
+
+plot_text3 = "Plot of cohort-weighted avereage event-time coefficents -- weighted using the number of states in each cohort"
+```
+
+```{r Plot of cohort-weighted event time treatment effects, fig.width=8, fig.cap=plot_text3}
+
+# Calculate treatment effect weights for each combination of event time and event year
+for (i in (1:nrow(reg_1f_df))) {
+    t_ = reg_1f_df[i, 'event_time']
+    y_ = reg_1f_df[i, 'event_year']
+    # Find number of states in cohort event_year 
+    numerator = data %>%
+        filter(j == t_, event_year == y_) %>%
+        nrow()
+    denominator = data %>%
+        filter(j == t_) %>%
+        nrow()
+    reg_1f_df[i, 'event_time_weight'] = numerator / denominator
+}
+
+# Calculate weighted average of treatment effects for a given event time '#7CAE00'
+reg_1f_df %>%
+    group_by(event_time) %>%
+    summarize(value = weighted.mean(est, event_time_weight)) %>%
+    mutate(reg_type = 'Sun & Abraham \n cohort weighted') %>%
+    rbind(., select(df1, event_time, value, reg_type)) %>%
+    arrange(reg_type) %>%
+    # Plot the treatment effects over event time
+    ggplot(aes(x=event_time, y=value, color = reg_type)) + 
+    geom_line() +
+    geom_point() +
+    geom_hline(yintercept = 0) +
+    labs(color = "Parameters estimated") +
+    xlab("Event Time (years since passage of primary seat belt law)") +
+    ylab("Coefficient Value")
+```
 
 
 
@@ -647,7 +732,7 @@ means %>%
 
 <!-- Reference: Table \ref{tab:avg-fat-TU} -->
 
-```{r Plot: pre-trends, message=F}
+```{r Plot pre-trends, message=F}
 # Plot log fat per cap for pre-treatment years, for treatment and control
 data2 %>%
     filter(year %in% preperiod_years) %>%
@@ -728,16 +813,27 @@ data2 %>%
     kable_styling(latex_options = "HOLD_position")
 ```
 
-From Table \ref{tab:1985-covar}, we can see that there are identical speed limits between
-state 47 and the aggregate treatment state. But most of the other covariates are
-very far apart in the distributions -- total vehicle miles traveled is different
-by an order of magnitude and are in different sides of the distribution; both snow
-and precipitation are on different sides of their distributions; the unemployment
-rates, population levels, and college rates are very far apart as well. This
-makes it hard to believe that state \#47 would be a good control for our 
-aggregate treatment state..
+From Table \ref{tab:1985-covar}, we can see that there are identical speed
+limits between state 47 and the aggregate treatment state. But most of the other
+covariates are very far apart in the distributions -- total vehicle miles
+traveled is different by an order of magnitude and are in different sides of the
+distribution; both snow and precipitation are on different sides of their
+distributions; the unemployment rates, population levels, and college rates are
+very far apart as well. This makes it hard to believe that state \#47 would be a
+good control for our aggregate treatment state.
 
+We also generated percentiles for each of the covariates by state and year.
+Using the average pre-treatment percentiles of covariates, the two states do not
+look similar at all. For instance, 
 
+- college: WV is 1p and TU is 49p 
+- beer: WV is 15p and TU is 92p 
+- unemployment: WV is 99p and TU is 68p 
+- ln_tvmt: WV is 20p and TU is 87p 
+- ln_precip: WV is 64p and TU is 33p 
+- snow: WV is 61p and TU is 33p. 
+
+They only match percentiles for log rural speed and log urban speed (19 and 39).
 
 
 
@@ -769,7 +865,7 @@ be provided in Stata and R only). Please be sure to state precisely what the
 command is doing and how you determined your preferred specification.**
 
 
-```{r Aarons Synth Function}
+```{r Aarons Synth Function wrapper, message=F}
 apply_synth = function(data, predictors_, treated_unit=99) {
     # Create list of all years in sample
     all_years = data %>%
@@ -840,7 +936,7 @@ apply_synth = function(data, predictors_, treated_unit=99) {
 Can't use rural or urban speed limits as predictors because they do not change
 across the control units.
 
-```{r Apply Synth1, cache=Cache}
+```{r Apply Synth1, cache=Cache, message=F}
 # Run Synth on preferred specification
 predictors1 = c("college" , "beer" , "unemploy" , "ln_tvmt_pc" , "ln_precip", "snow32")
 
@@ -851,11 +947,12 @@ synth.tables <- synth.tab(dataprep.res = synth1$dataprep.out,
 
 ```
 
-The Synth package calibrated the weights in a weighed average of the control states
-to fit the covariates of the aggregate treated unit. The weights were adjusted to
-minimize the sum of squared differences between the covariates of the control units
-and the covariates of the aggreagte treated unit, in the years before the treated
-unit was treated (`r min(preperiod_years)` - `r max(preperiod_years)`).
+The Synth package calibrated the weights in a weighed average of the control
+states to fit the covariates of the aggregate treated unit. The weights were
+adjusted to minimize the sum of squared differences between the covariates of
+the control units and the covariates of the aggreagte treated unit, in the years
+before the treated unit was treated (`r min(preperiod_years)` - `r
+max(preperiod_years)`).
 
 The weights that minimize the sum of these distances are in Table \ref{tab:synth-weights}.
 
@@ -871,16 +968,18 @@ synth.tables$tab.w %>%
 
 ```
 
-There are sums of squared differences for each covariate -- instead of just taking
-a simple sum or average of these and picking control unit weights to minimize that sum,
-the Synth package creates weights for the covariates to create a weighted average of
-the sum of squared differences to minimize.
-The covariates were first used to predict the pre-treatment outcome for the treated
-unit, and covariates that have more power in predicting the outcome receive large weights,
-and are more important in generating the synthetic control weights. These weights are in Table
-\ref{tab:synth-cov-weights} and are used in a weighted sum of the squared differences to find the optimal control unit weights in constructing the synthetic control. We can that the
-weight is fairly even across covariates except that precipitation has absorbed
-the weight that snow would get -- probably because they are highly correlated.
+There are sums of squared differences for each covariate -- instead of just
+taking a simple sum or average of these and picking control unit weights to
+minimize that sum, the Synth package creates weights for the covariates to
+create a weighted average of the sum of squared differences to minimize. The
+covariates were first used to predict the pre-treatment outcome for the treated
+unit, and covariates that have more power in predicting the outcome receive
+large weights, and are more important in generating the synthetic control
+weights. These weights are in Table \ref{tab:synth-cov-weights} and are used in
+a weighted sum of the squared differences to find the optimal control unit
+weights in constructing the synthetic control. We can that the weight is fairly
+even across covariates except that precipitation has absorbed the weight that
+snow would get -- probably because they are highly correlated.
 
 ```{r synth-var-weights-table}
 # Create table of Synth variable weights
@@ -1017,7 +1116,23 @@ gaps_df %>%
 
 ```
 
+```{r specification table}
+predictors = unique(c(predictors1, predictors2, predictors3))
+spec_df = data.frame(predictor=predictors)
+for (i in 1:3) {
+    # spec_df[, paste('Specification', i)] = 
+    spec_df = spec_df %>%
+        mutate("Specification {i}" := ifelse(predictor %in% eval(as.symbol(paste0('predictors', i))), 'x', ''))
+}
 
+spec_df %>%
+    kbl(caption = paste("Predictors included in each specification\\label{tab:specifications}"),
+        # col.names = c('State ID', 'log(fatatilities per captia)', 
+        #               'Absolute difference between this state and treated'),
+        row.names = F,
+        align = 'cc') %>%
+    kable_styling(latex_options = "HOLD_position")
+```
 
 
 
@@ -1034,7 +1149,7 @@ between each control state and its “placebo” treatment. Do you conclude that
 treatment was significant? Why or why not?**
 
 
-```{r Create placebo gaps, cache=Cache, warning=F}
+```{r Create placebo gaps, cache=Cache, warning=F, message=F}
 # Create list of control states
 control_states = data %>%
     group_by(state) %>%
@@ -1121,6 +1236,20 @@ gaps in (ii). [See Abadie et al. for an example]. Do you conclude that the
 treatment was significant? Why or why not?**
 
 
+```{r historgram of MSPE ratios}
+MSPE = function(df, treatment_year) {
+    pretreat = filter(df, year < treatment_year)
+    posttreat = filter(df, year1 >= treatment_year)
+    SSEpre = sum(pretreat$gaps)
+}
+
+gaps_df2 %>%
+    group_by(unit) %>%
+    # sum of pre-treatment squared gaps
+    # sum of post-treatment squared gaps
+    # ratio of post/pre MSE
+    summarize()
+```
 
 
 
