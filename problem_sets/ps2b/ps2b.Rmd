@@ -753,7 +753,7 @@ pre-treatment outcomes to construct a synthetic control group.**
 drawbacks.**
 
 
-The synthetic controls approach circumvents the issue of not having plausible control group by constructing one by weighting untreated units selected by weighting covariates based on their predictability of the pre-trement outcome. Even though this method does not calculate a standard error for the treatment effect in the conventional sense, it does allow us to test the believability of the treatment result via a placebo test (as long as the number of potential control units is sufficiently large). Synthetic controls become virtually impossible to use without a sufficient number of potential controls because the placebo test is vital to the interpretability of the treatment effect.
+The synthetic controls approach circumvents the issue of not having plausible control group by constructing one by weighting untreated units selected by weighting covariates based on their predictability of the pre-trement outcome. Even though this method does not calculate a standard error for the treatment effect in the conventional sense, it does allow us to test the believability of the treatment result via a placebo test (as long as the number of potential control units is sufficiently large). Synthetic controls become virtually impossible to use without sufficiently many potential controls because the placebo test is vital to the interpretability of the treatment effect. Essentially, synthetic controls is only as good as the number of potential control units.
 
 
 
@@ -1106,7 +1106,7 @@ gaps_df2 %>%
 
 
 
-
+Based on this graph alone (before seeing the placebo test), we might conclude that there was indeed a treatment effect of the policy. However, without more context (provided in 2ciii), we can't say.
 
 
 
@@ -1123,7 +1123,7 @@ treatment was significant? Why or why not?**
 
 
 
-
+From the distribution of MSPEs, we see that our treatment cannot be ruled out as mere chance. It is not even more than one standard deviation from the mean MSPE of placebo tests.
 
 
 
