@@ -1368,7 +1368,7 @@ variation in the data.
 **How do your synthetic control results compare to your fixed effects results
 from Question (3) in the last problem set? Interpret any differences.**
 
-
+Our FE results from 3f suggest that primary seat belt laws do in fact decrease traffic  fatalities (with strong statistical significance). This is close to what our synthetic controls model would suggest if we were to only look at the pre and post differences without any placebo tests for context. By performing the placebo test, however, we find that the treatment effect appears to be just a fluke. Many other control states exhibit a negative "effect" from the arbitrary treatment and TU is not out of the ordinary. This leads us to doubt the FE results we found in 3f. Perhaps we could run placebo FE for other states and find similar results.
 
 
 
