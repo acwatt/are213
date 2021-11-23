@@ -543,11 +543,18 @@ confident that seat belt laws reduce fatalities (relative to the fixed effects
 results that you estimated on the last problem set)? Briefly explain.**
 
 
-
-
-
-
-
+We are somewhat more confident about the event study results presented above. As
+you can see both graphically and in regression outputs for 1b, the coefficients
+on event times before the implementation of primary seat belt law are not
+significantly different from zero, passing the pre-trend tests, while the
+coefficients on event times 2-3 years after the implementation and onward are
+consistently statistically significant with a negative sign, more so with time.
+Furthermore, event study design may allow us to look into dynamic effects, if we
+were to believe that the policy chance have longer term compounding effects.
+However, our exploration thus far reveals no insight as to why we have a general
+negative trends, after partialling out the time and state fixed effects, which
+starts even before the implementation of the law and continues years after the
+implementation.
 
 
 
