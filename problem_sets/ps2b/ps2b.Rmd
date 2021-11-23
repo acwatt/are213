@@ -50,6 +50,8 @@ Cache = TRUE
 # install.packages("Synth")
 library(haven)
 library(stargazer)
+library(lmtest)
+library(plm)
 library(ggplot2)
 library(tinytex)
 library(kableExtra)
@@ -134,6 +136,14 @@ data.frame(max_j = max_j, min_j = min_j) %>%
   kable_styling(latex_options = "HOLD_position")
 
 ```
+
+The maximum before-event-period is negative 22 years, coming from State 7
+(Delaware), which implements the 'primary' law in 2003, the final year of the
+dataset. The maximum after-event-period is positive at positive 19 years, coming
+from State 32 (New York), which implements the 'primary' law in 1984, the fourth
+year in dataset. Note, only 18 states passed 'primary' law during this period,
+and states that did not pass such law will have zeroes for all dummies.
+
 
 Notice from Figure \ref{fig:max_event_time_distribution} that we have a wide
 range of maximum event times across our panel of states. One state even has a
@@ -268,8 +278,10 @@ less than zero starting with event period 5.
 
 ```{r event-study-table, results='asis'}
 # Event Study Table
-stargazer(reg_1a, reg_1b,
-          title = "Event Study Regressions\\label{tab:event-study-dummy-trap}",
+reg_1a_cov_cluster <- coeftest(reg_1a, vcov = vcovHC(reg_1a, type = "HC0", cluster = "state"))
+reg_1b_cov_cluster <- coeftest(reg_1b, vcov = vcovHC(reg_1b, type = "HC0", cluster = "state"))
+stargazer(reg_1a_cov_cluster, reg_1b_cov_cluster,
+          title = "Event Study Regressions\\label{tab:event-study-dummy-trap2}",
           dep.var.caption = "Log(Fatality per Population)",
           dep.var.labels.include = FALSE,
           column.labels = c("Event Study a", "Event Study b"),
@@ -278,9 +290,8 @@ stargazer(reg_1a, reg_1b,
           font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE,
           omit.stat=c("f", "ser"),
           single.row = TRUE,
-          digits = 4, type = table_type, header = FALSE)
-
-
+          digits = 4, type = table_type, header = FALSE,
+          notes = c('Standard Errors clustered at the state level.'))
 ```
 
 
@@ -342,7 +353,8 @@ reg_1c = df_threshold_dummies %>%
 
 ```{r Event Study table with Thresholds, results='asis'}
 # Event study table
-stargazer(reg_1c,
+reg_1c_cov_cluster <- coeftest(reg_1c, vcov = vcovHC(reg_1c, type = "HC0", cluster = "state"))
+stargazer(reg_1c_cov_cluster,
           title = "Event Study Regression with Threshold Indicators\\label{tab:event-study-thresholds}",
           dep.var.caption = "Log(Fatality per Population)",
           dep.var.labels.include = FALSE,
@@ -353,7 +365,8 @@ stargazer(reg_1c,
           omit.stat=c("f", "ser"),
           single.row = TRUE,
           notes = c("below\\_ and above\\_ variables are aggregate indicators for",
-                    "all event times that are below -5 and above 5, respectively."),
+                    "all event times that are below -5 and above 5, respectively.",
+                    'Standard Errors clustered at the state level.'),
           digits = 4, type = table_type, header = FALSE)
 
 # Text used in below figure (inserted using R markdown chunk arguments)
@@ -424,6 +437,14 @@ df1 %>%
              hjust = "center")
     
 ```
+
+Because the event study in part (b) is highly unbalanced in event time, we prefer
+this max-min threshold specification of the event study analysis. However, the 
+panel is still significantly unbalanced in even time even with the threshold
+bins. Part (f) lets us explore an interacted specification that more consistently
+estimates the treatment effects. Though we do not estimate corrected standard
+errors for part (f), the estimated coefficients are qualititatively similar to
+both parts (b) and (c).
 
 
 
@@ -984,8 +1005,7 @@ The Synth package calibrated the weights in a weighed average of the control
 states to fit the covariates of the aggregate treated unit. The weights were
 adjusted to minimize the sum of squared differences between the covariates of
 the control units and the covariates of the aggreagte treated unit, in the years
-before the treated unit was treated (`r min(preperiod_years)` - `r
-max(preperiod_years)`).
+before the treated unit was treated (`r min(preperiod_years)` - `r max(preperiod_years)`).
 
 The weights that minimize the sum of these distances are in Table \ref{tab:synth-weights}.
 
@@ -1178,7 +1198,7 @@ spec_df %>%
 
 
 
-
+\newpage
 ### ------ c.ii
 **Compare the graph plotting the gap between the TU and the synthetic control
 group under your preferred specification with the graphs plotting the gap
@@ -1235,7 +1255,7 @@ for (state_id in control_states){
 ```
 
 
-```{r Plot all the gaps}
+```{r Plot all the gaps, message=F}
 # Plot all the gaps (actual treatment estimate and control placebos)
 gaps_df2 %>%
     ggplot(aes(x=as.integer(Year), y=gaps, group=unit)) +
@@ -1265,7 +1285,7 @@ Based on this graph alone (before seeing the placebo test), we might conclude th
 
 
 
-
+\newpage
 ### ------ c.iii
 **Create a graph of the post-treatment/pre-treatment prediction ratios of the
 Mean Squared Prediction Errors (MSPE) for the actual and “placebo” treatment
@@ -1317,7 +1337,9 @@ MSPE_ratios %>%
 ```
 
 
-From the distribution of MSPEs, we see that our treatment cannot be ruled out as mere chance. It is not even more than one standard deviation from the mean MSPE of placebo tests.
+From the distribution of MSPEs, we see that our treatment cannot be ruled out as
+mere chance. It is not even more than one standard deviation from the mean MSPE
+of placebo tests (one standard deviation is approximately 24).
 
 Since we have 30 control states, this gives us a total of 31 synthetic control
 comparisons. We can calculate the MSPE of the synthetic control compared to the
@@ -1326,14 +1348,13 @@ Taking the post-pre ratio of MSPE gives us a sense of how divergent the Treatmen
 Unit is from its synthetic control. We can do this for all 31 synthetic control
 experiments (30 placebos using the 30 controls, and the actual Treatment Unit).
 
-In \ref{fig:ratios}, we can see that the post/pre MSPE ratio falls somewhat on
-the right side of the distribution. We can calculate a p-value as the
-probability that the result we got was not just from random chance. This is the
-number of MSPE ratios that are equal to or greater than the Treatment Unit's
-MSPE ratio, divided by the total number of ratios. The p-value for our actual
-synthetic control estimate is `r round(TU_rank/total_ratios, 3)`, so we cannot
-reject the null hypothesis that the decrease in fatalities is merely from random
-variation in the data.
+In Figure \ref{fig:ratios}, we can see that the post/pre MSPE ratio of our true
+treatment unit-synthetic control gap falls somewhat on the right side of the
+distribution. We can calculate a p-value as the probability that the result we
+got was not just from random chance. This is the number of MSPE ratios that are
+equal to or greater than the Treatment Unit's MSPE ratio, divided by the total
+number of ratios. The p-value for our actual synthetic control estimate is `r round(TU_rank/total_ratios, 3)`, so we cannot reject the null hypothesis that
+the decrease in fatalities is merely from random variation in the data.
 
 \[
 \text{p-value} =
@@ -1368,7 +1389,15 @@ variation in the data.
 **How do your synthetic control results compare to your fixed effects results
 from Question (3) in the last problem set? Interpret any differences.**
 
-Our FE results from 3f suggest that primary seat belt laws do in fact decrease traffic  fatalities (with strong statistical significance). This is close to what our synthetic controls model would suggest if we were to only look at the pre and post differences without any placebo tests for context. By performing the placebo test, however, we find that the treatment effect appears to be just a fluke. Many other control states exhibit a negative "effect" from the arbitrary treatment and TU is not out of the ordinary. This leads us to doubt the FE results we found in 3f. Perhaps we could run placebo FE for other states and find similar results.
+Our FE results from 3f suggest that primary seat belt laws do in fact decrease
+traffic  fatalities (with strong statistical significance). This is close to
+what our synthetic controls model would suggest if we were to only look at the
+pre and post differences without any placebo tests for context. By performing
+the placebo test, however, we find that the treatment effect appears to be just
+a fluke. Many other control states exhibit a negative "effect" from the
+arbitrary treatment and TU is not out of the ordinary. This leads us to doubt
+the FE results we found in 3f. Perhaps we could run placebo FE for other states
+and find similar results.
 
 
 
