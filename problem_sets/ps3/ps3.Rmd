@@ -10,7 +10,7 @@ output:
 header-includes:
    - \usepackage{dcolumn}
    - \usepackage{amsmath}
-knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'ARE_213_PS2b.pdf')) })
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'ARE_213_PS3.pdf')) })
 ---
 
 ```{r setup, include=FALSE}
@@ -47,8 +47,8 @@ library(ggplot2)
 library(tinytex)
 # library(Synth)
 # library(plm)
-# library(lmtest)
-# library(sandwich)
+library(lmtest)
+library(sandwich)
 # library(gridExtra)
 # library(grid)
 # library(gtable)
@@ -65,8 +65,101 @@ library(tinytex)
 **This question asks you to run OLS regressions that look at whether there is an association between 2000 housing values and whether a census tract contained a hazardous waste site that was placed on the NPL by 2000.**
 
 ## Part (a)
-**Use the file allsites.dta. This file contains only own tract housing variables (i.e. no 2 mile averages). Use "robust" standard errors for all regressions. First regress 2000 housing prices on whether the census tract had an NPL site in 2000. Include 1980 housing values as a control. Next add housing characteristics as controls. Run a third regression adding economic and demographic variables as controls. Finally run a 4th regression that also includes state fixed effects. Briefly interpret the regressions. Under what conditions will the coeffcients on NPL 2000 status be unbiased?**
+**Use the file allsites.dta. This file contains only own tract housing variables (i.e. no 2 mile averages). Use "robust" standard errors for all regressions. First regress 2000 housing prices on whether the census tract had an NPL site in 2000. Include 1980 housing values as a control. Next add housing characteristics as controls. Run a third regression adding economic and demographic variables as controls. Finally run a 4th regression that also includes state fixed effects. Briefly interpret the regressions. Under what conditions will the coefficients on NPL 2000 status be unbiased?**
 
+
+```{r Load allsites}
+# Load all sites data
+data1a = read_dta('allsites.dta') %>%
+    # select columns to omit from regressions
+    select(-bedrms0_80occ, -blt0_1yrs80occ, -detach80occ) %>%
+    # Drop duplicated rows
+    distinct()
+
+# Create fips lookup table (need to fill in fips = 32, 28, 46)
+state_lookup = data1a %>%
+    group_by(statefips) %>%
+    select(statefips, state) %>%
+    slice(which.max(nchar(as.character(state))))
+
+# Plot vars that might be collinear
+# scaleFUN <- function(x) sprintf("%.10f", x)
+# data1a %>%
+#     mutate(tot_blt = blt0_1yrs80occ+blt2_5yrs80occ + blt6_10yrs80occ + 
+#                blt10_20yrs80occ + blt20_30yrs80occ + blt30_40yrs80occ + blt40_yrs80occ,
+#            tot_attach = detach80occ + attach80occ + mobile80occ) %>%
+#     ggplot() + geom_histogram(aes(x=tot_attach)) + scale_x_continuous(labels=scaleFUN)
+```
+
+
+```{r Regress prices on NPL with 1980 housing values}
+# Regress prices on NLP, 1980 prices
+reg1a1 = lm(lnmdvalhs0 ~ npl2000 + lnmeanhs8, data=data1a) %>%
+    coeftest(vcov = vcovHC(., type = "HC0"))
+
+```
+
+```{r Regress prices on NPL with housing characteristics}
+# Regress prices on NLP, 1980 prices, housing characteristics
+reg1a2 = data1a %>%
+    select(lnmdvalhs0, npl2000, lnmeanhs8, tothsun8:occupied80) %>%
+    lm(lnmdvalhs0 ~ ., data=.) %>%
+    coeftest(vcov = vcovHC(., type = "HC0"))
+
+```
+
+
+```{r Regress prices on NPL with housing econ demographic controls}
+# Regress prices on NLP, 1980 prices, housing, econ, demographics
+reg1a3 = data1a %>%
+    select(-fips, -state, -statefips) %>%
+    lm(lnmdvalhs0 ~ ., data=.) %>%
+    coeftest(vcov = vcovHC(., type = "HC0"))
+
+```
+
+
+```{r Regress prices on NPL with controls and state FE}
+# Regress prices on NLP, 1980 prices, housing, econ, demographics, state FE
+reg1a4 = data1a %>%
+    select(everything(), -fips, -state, statefips) %>%
+    mutate(statefips = factor(statefips)) %>%
+    lm(lnmdvalhs0 ~ ., data=.) %>%
+    coeftest(vcov = vcovHC(., type = "HC0"))
+
+```
+
+```{r Regressions 1a table, results='asis'}
+stargazer(reg1a1, reg1a2, reg1a3, reg1a4,
+          title = "Preliminary Hedonic Regressions",
+          dep.var.caption = "Log(Median 2000 Housing Prices)",
+          dep.var.labels.include = FALSE, model.names = FALSE,
+          # column.labels = c("FE", "FE(Cluster)"),
+          keep = "npl2000",
+          covariate.labels = 'NPL 2000',
+          add.lines=list(c('Mean 1980 Housing Values', 'Yes', 'Yes', 'Yes', 'Yes'),
+                         c('Housing Characteristics', 'No', 'Yes', 'Yes', 'Yes'),
+                         c('Economic Vars and Demographics', 'No', 'No', 'Yes', 'Yes'),
+                         c('State Fixed Effects', 'No', 'No', 'No', 'Yes')),
+          font.size = "footnotesize", column.sep.width = "1pt", no.space = TRUE, omit.stat=c("f", "ser"),
+          type = table_type, header = FALSE, digits = 4,
+          notes = c('Robust Standard Errors in parentheses.',
+                    'NPL 2000 = has site on the National Priorities List by year 2000.'))
+```
+
+If we focus on regression (4), the coefficient on NPL 2000 is telling us that
+the marginal house buyer purchasing a house of median value in the year 2000 is willing to pay 6 
+percentage points higher housing price if a super fund site in the census tract
+has been labeled for cleanup using the NPL list.
+
+
+The NPL 2000 coefficient will be unbiased if the NPL superfund assignment is 
+conditionally independent of determinants of housing values in 2000, conditional
+upon covariates included in the regression. For example, regression (1) will be
+unbiased if, given mean housing values from 1980, the NPL assignment is as-good-as-random.
+Regression (4) would be unbiased if, in a given state, the NLP assignment is
+as-good-as-random after conditioning on 1980 mean housing values and observed
+housing, economic, and demographic characteristics of the census tract.
 
 
 
@@ -91,7 +184,7 @@ library(tinytex)
 **Consider the HRS score as the running variable for an RD research design. What assumptions are needed on the HRS score? How do each of the following "facts" impact the appropriateness of these assumptions:**
 
 ### ------ a.i
-**The EPA assertion that \the 28.5 cutooff was selected because it produced a manageable number of sites." **
+**The EPA assertion that the 28.5 cutooff was selected because it produced a manageable number of sites." **
 
 
 
