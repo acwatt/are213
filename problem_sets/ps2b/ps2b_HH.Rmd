@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r Loading packages}
 library(pacman)
-p_load(dplyr, tidyverse, readr, knitr, ggplot2, stargazer, here, data.table, janitor, foreign, haven, fastDummies, jtools, dotwhisker)
+p_load(dplyr, tidyverse, readr, knitr, ggplot2, stargazer, here, data.table, janitor, foreign, haven, fastDummies, jtools, dotwhisker, kableExtra, Synth)
 ```
 
 ```{r Reading data}
@@ -103,10 +103,172 @@ df_1b_dw <- broom::tidy(reg_1b) %>%
   filter(grepl("j_", term))
 
 j_coefplot <- dwplot(df_1b_dw) + 
-  ggtitle("Event Study Coefficients") + 
-  theme(text = element_text(size = 6)) 
+  theme(text = element_text(size = 6)) + 
+  ggtitle("Event Study Coefficients")
 
 
 j_coefplot
 ```
+
+```{r 1c}
+
+```
+
+
+2.) Synthetic Control Problem 
+
+i.)
+```{r 2ai}
+df_2a <-  left_join(df, event_years, by = "state") %>% #merging event year to original data
+  mutate(j = year - event_year )%>% 
+  mutate(j = ifelse(is.na(j), 99, j))
+
+df_2a_i_TU <- df_2a %>% 
+  filter(state == 99 & j < 0) %>% 
+  select(state, year, ln_fat_pc) %>% 
+  mutate(state = "TU")
+
+df_2a_i_control <- df_2a %>% 
+  filter(j == 99) %>% 
+  filter(year %in% (1981:1985)) %>% 
+  select(state, year, ln_fat_pc) %>% 
+  group_by(year) %>% 
+  summarise(ln_fat_pc = mean(ln_fat_pc)) %>% 
+  mutate(state = "average control") %>% 
+  relocate(state)
+
+
+df_2a_i_both <- rbind(df_2a_i_control, df_2a_i_TU)
+
+graph_2a_i <- ggplot(df_2a_i_both, 
+                     aes(year, ln_fat_pc, 
+                     group = factor(state), 
+                     color = factor(state))) + 
+  geom_line() + 
+  geom_point() +
+  ggtitle("Pre-period Log Traffic Fatalities")
+
+graph_2a_i
+```
+
+ii.) 
+
+```{r 2aii_1}
+df_2a_ii_control <- df_2a %>% 
+  filter(j == 99) %>% 
+  filter(year %in% (1981:1985)) %>% 
+  select(state, year, ln_fat_pc) %>% 
+  filter(year == 1985)
+
+df_2a_ii_TU <- df_2a %>% 
+  filter(state == 99 & j < 0) %>% 
+  select(state, year, ln_fat_pc) %>% 
+  mutate(state = "TU") %>% 
+  filter(year == 1985) %>% 
+  rename(ln_fat_pc_TU = ln_fat_pc) %>% 
+  select(-state)
+
+df_2a_ii <- left_join(df_2a_ii_control, df_2a_ii_TU, by = "year") %>% 
+  mutate(diff_ln_fat_pc = abs(ln_fat_pc - ln_fat_pc_TU)) %>% 
+  arrange(diff_ln_fat_pc)
+
+```
+
+WV best matches the TU. 
+
+```{r 2aii_2}
+df_2a_ii_2 <- df %>% 
+  filter(year == 1985 & (state == 47 | state == 99)) %>% 
+  mutate(state = ifelse(state == 47, "WV", "TU")) %>%
+  t() %>% 
+  kbl() %>% 
+  kable_classic(full_width = F, html_font = "Cambria")
+
+df_2a_ii_2
+```
+
+However, the covariates seem very different between the two. 
+
+b.) 
+
+  i.) 
+  
+  ii.) 
+  
+```{r 2b}
+df_2b <- df %>% 
+  mutate(state_no = as.numeric(unlist(state)))
+
+all_years <- df %>%
+      arrange(year) %>%
+      select(year) %>%
+      unique()%>%
+      unlist() %>%
+      as.numeric(.)
+
+# Create list of pre-treatment years
+preperiod_years <- df %>%
+    filter(state == 99, primary == 0) %>%
+    select(year) %>%
+    unlist(.) %>%
+    as.numeric(.)
+
+# Create list of control states
+control_states <- df %>%
+    group_by(state) %>%
+    mutate(control = ifelse(mean(primary) > 0, 0, 1)) %>%
+    filter(year == tail(preperiod_years, n=1)) %>%
+    filter(control == 1) %>%
+    select(state) %>%
+    unlist(.) %>%
+    as.numeric(.)
+
+state_names <- rownames(data.frame(attr(df$state, 'label')))
+
+    
+predictors1 <- c("college" , "beer" , "unemploy" , "ln_tvmt_pc" , "ln_precip", "snow32")
+
+dataprep.out <- dataprep(foo = data.frame(df_2b), 
+                         predictors = predictors1, 
+                         time.predictors.prior = preperiod_years, 
+                         dependent = "ln_fat_pc", 
+                         unit.variable = "state_no", 
+                         time.variable = "year",
+                         treatment.identifier = 99,
+                         controls.identifier = control_states, 
+                         time.optimize.ssr = preperiod_years,
+                         time.plot = all_years)
+
+synth.out <- synth(data.prep.obj = dataprep.out, method = "BFGS")
+
+synth.tables <- synth.tab(dataprep.res = dataprep.out,
+                           synth.res = synth.out)
+
+synth.tables$tab.pred
+                         
+path.plot(synth.res = synth.out, dataprep.res = dataprep.out, 
+           Ylab = "log(Traffic Fatalities per Captia)",
+           Xlab = "year",
+           Ylim = c(-2,-1),
+           Legend = c("Aggregate Treatment State","Synthetic Control State"),
+           Main = "Traffic Fatalities before and after Primary Seat Belt Laws",
+           tr.intake = tail(preperiod_years, n=1)+1)    
+
+gaps.plot(synth.res = synth.out, dataprep.res = dataprep.out)
+
+```
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
 
