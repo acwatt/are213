@@ -315,6 +315,7 @@ plot(twomiledata$hrs_82, twomiledata$npl2000,
   abline(v = 28.5, lty = 3, col = 2, lwd = 2)
 ```
 
+Above graph demonstrates that we have a clear break at threshold but the cut-off is not as perfect for strict RD design. Rather, we may want to consider Fuzzy RD design. The few census tracts that has lower than 28.5 points on HRS score in 1982 measure but still manages to get on NPL by 2000 could perhaps (1) receive higher score on on HRS in proceeding years, getting onto NPL before 2000, or (2) could potentially have other reasons, i.e. political connections or pressure, for getting onto the list.
 
 ## Part (c)
 **Create a graph that plots the 1982 HRS score against 1980 property values (property values on the y-axis, HRS on the x -axis). What do you conclude from this graph?**
@@ -325,7 +326,7 @@ plot(twomiledata$hrs_82, twomiledata$lnmeanhs8,
   abline(v = 28.5, lty = 3, col = 2, lwd = 2)
 ```
 
-
+We are examining only one of the covariates against the runing variable. However, at least in the case of median house value in 1980, the covariate seems to be continuous around the threshold of the running variable, satisfying our assumptions for RD design.
 
 
 
