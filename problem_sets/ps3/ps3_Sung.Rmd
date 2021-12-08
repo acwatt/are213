@@ -256,11 +256,6 @@ We want probability of treatment (NPL) to change discontinuously at the threshol
 
 
 
-
-
-
-
-
 \newpage
 <!--=========================================================================-->
 # Problem 3
@@ -278,7 +273,7 @@ We want probability of treatment (NPL) to change discontinuously at the threshol
 \intertext{1st Stage}
 NPL2000_{i,s} = \alpha_1 + \beta_{1,1} 1(HRS1982 > 28.5)_i + \beta_{1,2} Covariates_{i} + \beta_{1,3} \theta_s + v_{i,s}
 \intertext{2nd Stage}
-HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} 1(HRS1982 > 28.5)_i + \beta_{2,2} Covariates_{i} + \beta_{2,3} \theta_s + \epsilon_{i,s}
+HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} NPL_{i,2000} + \beta_{2,2} Covariates_{i} + \beta_{2,3} \theta_s + \epsilon_{i,s}
 \end{align*}
 
 
@@ -341,7 +336,7 @@ We are examining only one of the covariates against the runing variable. However
 \intertext{1st Stage}
 NPL2000_{i,s} = \alpha_1 + \beta_{1,1} 1(HRS1982 > 28.5)_i + \beta_{1,2} Covariates_{i} + \beta_{1,3} \theta_s + v_{i,s}
 \intertext{2nd Stage}
-HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} 1(HRS1982 > 28.5)_i + \beta_{2,2} Covariates_{i} + \beta_{2,3} \theta_s + \epsilon_{i,s}
+HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} NPL_{i,2000} + \beta_{2,2} Covariates_{i} + \beta_{2,3} \theta_s + \epsilon_{i,s}
 \end{align*}
 
 
