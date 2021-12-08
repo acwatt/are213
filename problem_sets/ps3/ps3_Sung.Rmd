@@ -69,6 +69,10 @@ sum(duplicated(allsite)) # This confirms that their entire row values are
                          # duplicates and can be dropped.
 # Duplicates Dropped
 allsite <- allsite[!duplicated(allsite),]
+
+# Duplicates Dropped for "allcovarites.dta" - same procedure as above
+sum(duplicated(allcovariates))
+allcovariates <- allcovariates[!duplicated(allcovariates),]
 ```
 
 
@@ -111,22 +115,102 @@ reg_1a4 <- felm(Formula3, data = allsite)
 # Stargazer Table with All Four Regressions
 stargazer(reg_1a1_r, reg_1a2_r, reg_1a3_r, reg_1a4,
           se = list(reg_1a1_r[,2], reg_1a2_r[,2], reg_1a3_r[,2], reg_1a4$rse),
-          type = "text", omit.stat = "f")
+          keep = "npl2000", type = "text", omit.stat = "f")
 
 # Questions
 #Why multicollinear
 #Do we want clustered SE
 ```
 
+First, note that before starting Q1, we observed duplicate observations in 'allsite.dta'.  These duplicates were dropped.
 
+Second, we can see that coefficient on NPL2000 was statistically significant under all four specifications.
+
+In order to be consistent and unbiased, we need NPL2000 to be randomly assigned (or as good as random given controls for more complex model specifications) and that there exists no correlation between NPL2000 and 2000 Housing Price via unobservable factor, which would thereby be captured through an error term.
 
 
 \newpage
 ## Part (b)
 **Here we will compare covariates between potential treatment and comparison groups. First, use allcovariates.dta to compare co-variates (i.e. those used in the above regressions) between census tracts with and without a hazardous waste site listed on the NPL by 2000. Next, use sitecovariates.dta to compare covariates between those census tracts with a hazardous waste site that had an HRS test in 1982. Specifically, compare those with sites that scored above 28.5 to those that scored below 28.5. Finally, compare those census tracts with sites between 16.5 and 28.5 to census tracts with sites between 28.5 and 40.5. What conclusions do you draw from these 3 comparisons?**
 
+```{r}
+# Using "allcovariates.dta", compare covariates between treatment and comparison groups.
+# Note: variable "old8" is not available in "allcovariates.dta"
+ttest_1 <- allcovariates %>%
+                mutate(npl2000_f = ifelse(npl2000 == 1, "OnList", "NotOnList")) %>%
+                select(npl2000_f, 
+                          smhse8, tothsun8, ownocc8, firestoveheat80, 
+                          noaircond80, nofullkitchen80, zerofullbath80, 
+                          bedrms0_80occ, bedrms1_80occ, bedrms2_80occ, 
+                            bedrms3_80occ, bedrms4_80occ, bedrms5_80occ,
+                          blt0_1yrs80occ, blt2_5yrs80occ, blt6_10yrs80occ, 
+                            blt10_20yrs80occ, blt20_30yrs80occ, blt30_40yrs80occ, blt40_yrs80occ,
+                          detach80occ, attach80occ, mobile80occ, occupied80,
+                          pop_den8, shrblk8, shrhsp8, child8, shrfor8, ffh8,
+                          hsdrop8, no_hs_diploma8, ba_or_better8, unemprt8, povrat8, 
+                          welfare8, avhhin8) %>%
+                gather(key = variable, value = value, - npl2000_f) %>%
+                group_by(npl2000_f, variable) %>%
+                summarise(value = list(value)) %>%
+                spread(npl2000_f, value) %>%
+                group_by(variable) %>%
+                mutate(p_value = t.test(unlist(OnList), unlist(NotOnList))$p.value,
+                       t_value = t.test(unlist(OnList), unlist(NotOnList))$statistic) %>%
+                select(variable, p_value, t_value)
+print(ttest_1)
 
+# Using "sitecovariates.dta", compare covarites between census tracts with HRS test score from 1982 above and below 28.5.
+# Note: variable "old8" is not available in "allcovariates.dta"
+ttest_2 <- sitecovariates %>%
+                mutate(above = ifelse(hrs_82 > 28.5, "Above", "Below")) %>%
+                select(above, 
+                          smhse8, tothsun8, ownocc8, firestoveheat80, 
+                          noaircond80, nofullkitchen80, zerofullbath80, 
+                          bedrms0_80occ, bedrms1_80occ, bedrms2_80occ, 
+                            bedrms3_80occ, bedrms4_80occ, bedrms5_80occ,
+                          blt0_1yrs80occ, blt2_5yrs80occ, blt6_10yrs80occ, 
+                            blt10_20yrs80occ, blt20_30yrs80occ, blt30_40yrs80occ, blt40_yrs80occ,
+                          detach80occ, attach80occ, mobile80occ, occupied80,
+                          pop_den8, shrblk8, shrhsp8, child8, shrfor8, ffh8,
+                          hsdrop8, no_hs_diploma8, ba_or_better8, unemprt8, povrat8, 
+                          welfare8, avhhin8) %>%
+                gather(key = variable, value = value, - above) %>%
+                group_by(above, variable) %>%
+                summarise(value = list(value)) %>%
+                spread(above, value) %>%
+                group_by(variable) %>%
+                mutate(p_value = t.test(unlist(Above), unlist(Below))$p.value,
+                       t_value = t.test(unlist(Above), unlist(Below))$statistic) %>%
+                select(variable, p_value, t_value)
+print(ttest_2)
 
+# Using "sitecovaraites.dta", compare covarites between census tracts with HRS test score from 1982 of 28.5-40.5 and 16.5-28.5.
+ttest_3 <- sitecovariates %>%
+                filter(hrs_82 >= 16.5 & hrs_82 <= 40.5) %>%
+                mutate(justabove = ifelse(hrs_82 > 28.5, "JustAbove", "JustBelow")) %>%
+                select(justabove, 
+                          smhse8, tothsun8, ownocc8, firestoveheat80, 
+                          noaircond80, nofullkitchen80, zerofullbath80, 
+                          bedrms0_80occ, bedrms1_80occ, bedrms2_80occ, 
+                            bedrms3_80occ, bedrms4_80occ, bedrms5_80occ,
+                          blt0_1yrs80occ, blt2_5yrs80occ, blt6_10yrs80occ, 
+                            blt10_20yrs80occ, blt20_30yrs80occ, blt30_40yrs80occ, blt40_yrs80occ,
+                          detach80occ, attach80occ, mobile80occ, occupied80,
+                          pop_den8, shrblk8, shrhsp8, child8, shrfor8, ffh8,
+                          hsdrop8, no_hs_diploma8, ba_or_better8, unemprt8, povrat8, 
+                          welfare8, avhhin8) %>%
+                gather(key = variable, value = value, - justabove) %>%
+                group_by(justabove, variable) %>%
+                summarise(value = list(value)) %>%
+                spread(justabove, value) %>%
+                group_by(variable) %>%
+                mutate(p_value = t.test(unlist(JustAbove), unlist(JustBelow))$p.value,
+                       t_value = t.test(unlist(JustAbove), unlist(JustBelow))$statistic) %>%
+                select(variable, p_value, t_value)
+print(ttest_3)
+```
+
+In the three tables above, we check for balance of covariates (same ones used in 1(a)) across three potential treatment and control groups. In the first specification, treatment group is tracts on NPL list by 2000 and control is the counterpart. In the corresponding table, we can see that means are statistically significantly different on most variables across the two groups. In the second specification, treatment group is census tracts with HRS score in 1982 above 28.5 and control goups is census tracts with score below 28.5. And the tracts without HRS testing in 1982 are omitted. Comparing across 37 covariates, we can again see that on 16 covariates there is statistically significant difference between the two groups. In the final specification, we get closer to treatment and control groups we would use in Regression Discontinuity design. We can see that p_values are significantly larger and we seeem to observe balance across most covariates. Hence, except for which tracts were placed on NPL list or not, the two groups look similar on average on observable dimensions.
 
 
 
