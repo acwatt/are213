@@ -67,12 +67,15 @@ sitecovariates = read_dta('sitecovariates.dta')
 sum(duplicated(allsite$fips)) # There are cases of duplicate observations with same FIPs.
 sum(duplicated(allsite)) # This confirms that their entire row values are 
                          # duplicates and can be dropped.
-# Duplicates Dropped
+# Duplicates Dropped for "allsite.dta"
 allsite <- allsite[!duplicated(allsite),]
 
 # Duplicates Dropped for "allcovarites.dta" - same procedure as above
 sum(duplicated(allcovariates))
 allcovariates <- allcovariates[!duplicated(allcovariates),]
+
+# No duplicates in "twomiledata.dta"
+sum(duplicated(twomiledata))
 ```
 
 
@@ -227,15 +230,13 @@ In the three tables above, we check for balance of covariates (same ones used in
 ### ------ a.i
 **The EPA assertion that \the 28.5 cutooff was selected because it produced a manageable number of sites." **
 
-
-
 ### ------ a.ii
 **None of the individuals involved in identifying the site, testing the level of pollution, or running the 1982 HRS test knew the cutoff threshold score. **
 
-
-
 ### ------ a.iii
 **EPA documentation emphasizes that the HRS test is an imperfect scoring measure. **
+
+We want probability of treatment (NPL) to change discontinuously at the threshold of running variable (HRS). Furthermore, we should not see bunching around the threshold, which may be indicative of manipulation in treatment status.
 
 
 
@@ -271,13 +272,58 @@ In the three tables above, we check for balance of covariates (same ones used in
 **Use a 2SLS (IV) econometric setup that uses whether or not a census tract has a site scoring above/below 28.5 as the instrument. Write down the 1st stage equation. Run the 1st stage regression experimenting with the same set of covariates used in question (1). In addition, run a second specification in which you limit the sample to only those census tracts with sites between 16.5 and 40.5 and run the specification using all of the control variables (we will use this as the size of the bandwidth for the "regression discontinuity" regression). Interpret the results.**
 
 
+
+\begin{align*}
+\intertext{Equaions for 2SLS Set Up}
+\intertext{1st Stage}
+NPL2000_{i,s} = \alpha_1 + \beta_{1,1} 1(HRS1982 > 28.5)_i + \beta_{1,2} Covariates_{i} + \beta_{1,3} \theta_s + v_{i,s}
+\intertext{2nd Stage}
+HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} 1(HRS1982 > 28.5)_i + \beta_{2,2} Covariates_{i} + \beta_{2,3} \theta_s + \epsilon_{i,s}
+\end{align*}
+
+
+```{r}
+names(twomiledata) <- sub("\\_nbr$", "", names(twomiledata))
+
+# Run 1st stage regression (as written above)
+twomiledata$ind_hrsabove = twomiledata$hrs_82 >= 28.5
+Formula4 <- formula(paste("npl2000 ~ ind_hrsabove + ", paste(c(HousingChar, EconNDemo), collapse=" + "), " | statefips"))
+
+reg3a_1 <- felm(Formula4, data = twomiledata)
+
+# Run 1st stage regression (limiting to tracts with HRS_82 between 16.5 and 40.5)
+
+twomiledata_subset <- twomiledata[twomiledata$hrs_82 >= 16.5,]
+twomiledata_subset <- twomiledata_subset[twomiledata_subset$hrs_82 <= 40.5,]
+
+reg3a_2 <- felm(Formula4, data = twomiledata_subset)
+
+# Output Table
+stargazer(reg3a_1,reg3a_2,
+          se = list(reg3a_1$rse, reg3a_2$rse),
+          keep = "ind_hrsabove", type = "text", omit.stat = "f")
+
+```
+
+
 ## Part (b)
 **Create a graph plotting the the 1982 HRS score against whether a site is listed on the NPL by year 2000 (NPL on the y-axis, HRS on the x -axis). Briefly explain and interpret this graph.**
+
+```{r}
+plot(twomiledata$hrs_82, twomiledata$npl2000,
+  xlab = "HRS Score in 1982", ylab = "Whether on NPL by Year 2000")
+  abline(v = 28.5, lty = 3, col = 2, lwd = 2)
+```
 
 
 ## Part (c)
 **Create a graph that plots the 1982 HRS score against 1980 property values (property values on the y-axis, HRS on the x -axis). What do you conclude from this graph?**
 
+```{r}
+plot(twomiledata$hrs_82, twomiledata$lnmeanhs8,
+  xlab = "HRS Score in 1982", ylab = "Median House Value in 1980")
+  abline(v = 28.5, lty = 3, col = 2, lwd = 2)
+```
 
 
 
@@ -289,7 +335,13 @@ In the three tables above, we check for balance of covariates (same ones used in
 <!--=========================================================================-->
 **Write down the 2nd stage equation (with housing values as the out-come) and the 2 standard assumptions for valid IV estimation. Run 2SLS to get the estimated coefficient on 2000 NPL status. Run the same two specifications as in the previous question. Briefly interpret the results.**
 
-
+\begin{align*}
+\intertext{Equaions for 2SLS Set Up}
+\intertext{1st Stage}
+NPL2000_{i,s} = \alpha_1 + \beta_{1,1} 1(HRS1982 > 28.5)_i + \beta_{1,2} Covariates_{i} + \beta_{1,3} \theta_s + v_{i,s}
+\intertext{2nd Stage}
+HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} 1(HRS1982 > 28.5)_i + \beta_{2,2} Covariates_{i} + \beta_{2,3} \theta_s + \epsilon_{i,s}
+\end{align*}
 
 
 
