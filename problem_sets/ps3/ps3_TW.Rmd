@@ -1,0 +1,409 @@
+---
+title: "ARE 213 PS 3"
+author: "S. Sung, H. Husain, T. Woolley, A. Watt"
+email: aaron@acwatt.net
+date: "2021-12-8"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 2
+header-includes:
+   - \usepackage{dcolumn}
+   - \usepackage{amsmath}
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'ARE_213_PS2b.pdf')) })
+---
+
+```{r setup, include=FALSE}
+rm(list=ls())
+knitr::opts_chunk$set(echo = F)
+```
+<!--
+R version 3.6.3 (2020-02-29)
+Purpose of script: run code necessary for ps2b for ARE 213
+
+Notes: Need to open ps2b.Rmd from the ps2b folder (without Rstudio being started first)
+if Rstudio is already started, the working directory will not be set
+to the ps2b/ folder
+
+\usepackage{dcolumn}: dcolumn is needed in latex compilation for multicolumn tables
+-->
+
+```{r Settings}
+# stargazer table type (html, latex, or text)
+# Change to latex when outputting to PDF, html when outputting to html
+table_type = "latex"
+```
+
+
+```{r packages, include=F}
+library(tidyverse)
+library(haven)
+library(stargazer)
+library(ggplot2)
+library(tinytex)
+library(lfe) # For felm() fixed effects model
+library(lmtest)
+library(sandwich)
+# library(Synth)
+# library(plm)
+# library(gridExtra)
+# library(grid)
+# library(gtable)
+# library(fastDummies)
+# library(EnvStats)
+```
+
+
+```{r Call in all Datasets, eval=T}
+allsite = read_dta('allsites.dta')
+allcovariates = read_dta('allcovariates.dta')
+twomiledata = read_dta('2miledata.dta')
+sitecovariates = read_dta('sitecovariates.dta')
+```
+
+
+```{r Data Exploration - allsite.dta, eval=T}
+# In "allsite.dta", we observe that there are duplicate observations. Dropped
+sum(duplicated(allsite$fips)) # There are cases of duplicate observations with same FIPs.
+sum(duplicated(allsite)) # This confirms that their entire row values are 
+                         # duplicates and can be dropped.
+# Duplicates Dropped for "allsite.dta"
+allsite <- allsite[!duplicated(allsite),]
+
+# Duplicates Dropped for "allcovarites.dta" - same procedure as above
+sum(duplicated(allcovariates))
+allcovariates <- allcovariates[!duplicated(allcovariates),]
+
+# No duplicates in "twomiledata.dta"
+sum(duplicated(twomiledata))
+```
+
+
+\newpage
+<!--=========================================================================-->
+# Problem 1
+<!--=========================================================================-->
+**This question asks you to run OLS regressions that look at whether there is an association between 2000 housing values and whether a census tract contained a hazardous waste site that was placed on the NPL by 2000.**
+
+## Part (a)
+**Use the file allsites.dta. This file contains only own tract housing variables (i.e. no 2 mile averages). Use "robust" standard errors for all regressions. First regress 2000 housing prices on whether the census tract had an NPL site in 2000. Include 1980 housing values as a control. Next add housing characteristics as controls. Run a third regression adding economic and demographic variables as controls. Finally run a 4th regression that also includes state fixed effects. Briefly interpret the regressions. Under what conditions will the coeffcients on NPL 2000 status be unbiased?**
+
+```{r Q1a}
+# Regress 2000 housing prices on 1(NPL site in 2000) and 1980 housing values.
+reg_1a1 <- lm(lnmdvalhs0 ~ npl2000 + lnmeanhs8, data = allsite)
+reg_1a1_r <- coeftest(reg_1a1, vcov = vcovHC(reg_1a1, type = "HC1"))
+
+# Regress: Add housing characteristics as control.
+HousingChar <- c("smhse8", "tothsun8", "ownocc8", "firestoveheat80", "noaircond80", 
+                 "nofullkitchen80", "zerofullbath80", 
+                "bedrms1_80occ", "bedrms2_80occ", "bedrms3_80occ", "bedrms4_80occ", "bedrms5_80occ",
+                "blt2_5yrs80occ", "blt6_10yrs80occ", "blt10_20yrs80occ", "blt20_30yrs80occ", "blt30_40yrs80occ", "blt40_yrs80occ",
+                "detach80occ", "attach80occ", "mobile80occ", "occupied80")
+Formula1 <- formula(paste("lnmdvalhs0 ~ npl2000 + lnmeanhs8 + ", paste(HousingChar, collapse=" + ")))
+reg_1a2 <- lm(Formula1, data = allsite)
+reg_1a2_r <- coeftest(reg_1a2, vcov = vcovHC(reg_1a2, type = "HC1"))
+
+# Regress: Add economic and demographic variables as control.
+EconNDemo <- c("pop_den8", "shrblk8", "shrhsp8", "child8", "old8", "shrfor8", "ffh8", 
+               "hsdrop8", "no_hs_diploma8", "ba_or_better8", "unemprt8", "povrat8", 
+               "welfare8", "avhhin8")
+Formula2 <- formula(paste("lnmdvalhs0 ~ npl2000 + lnmeanhs8 + ", paste(c(HousingChar, EconNDemo), collapse=" + ")))
+reg_1a3 <- lm(Formula2, data = allsite)
+reg_1a3_r <- coeftest(reg_1a3, vcov = vcovHC(reg_1a3, type = "HC1"))
+
+# Include State FE
+Formula3 <- formula(paste("lnmdvalhs0 ~ npl2000 + lnmeanhs8 + ", paste(c(HousingChar, EconNDemo), collapse=" + "), " | statefips"))
+reg_1a4 <- felm(Formula3, data = allsite)
+
+# Stargazer Table with All Four Regressions
+stargazer(reg_1a1_r, reg_1a2_r, reg_1a3_r, reg_1a4,
+          se = list(reg_1a1_r[,2], reg_1a2_r[,2], reg_1a3_r[,2], reg_1a4$rse),
+          keep = "npl2000", type = "text", omit.stat = "f")
+
+# Questions
+#Why multicollinear
+#Do we want clustered SE
+```
+
+First, note that before starting Q1, we observed duplicate observations in 'allsite.dta'.  These duplicates were dropped.
+
+Second, we can see that coefficient on NPL2000 was statistically significant under all four specifications.
+
+In order to be consistent and unbiased, we need NPL2000 to be randomly assigned (or as good as random given controls for more complex model specifications) and that there exists no correlation between NPL2000 and 2000 Housing Price via unobservable factor, which would thereby be captured through an error term.
+
+
+\newpage
+## Part (b)
+**Here we will compare covariates between potential treatment and comparison groups. First, use allcovariates.dta to compare co-variates (i.e. those used in the above regressions) between census tracts with and without a hazardous waste site listed on the NPL by 2000. Next, use sitecovariates.dta to compare covariates between those census tracts with a hazardous waste site that had an HRS test in 1982. Specifically, compare those with sites that scored above 28.5 to those that scored below 28.5. Finally, compare those census tracts with sites between 16.5 and 28.5 to census tracts with sites between 28.5 and 40.5. What conclusions do you draw from these 3 comparisons?**
+
+```{r}
+# Using "allcovariates.dta", compare covariates between treatment and comparison groups.
+# Note: variable "old8" is not available in "allcovariates.dta"
+ttest_1 <- allcovariates %>%
+                mutate(npl2000_f = ifelse(npl2000 == 1, "OnList", "NotOnList")) %>%
+                select(npl2000_f, 
+                          smhse8, tothsun8, ownocc8, firestoveheat80, 
+                          noaircond80, nofullkitchen80, zerofullbath80, 
+                          bedrms0_80occ, bedrms1_80occ, bedrms2_80occ, 
+                            bedrms3_80occ, bedrms4_80occ, bedrms5_80occ,
+                          blt0_1yrs80occ, blt2_5yrs80occ, blt6_10yrs80occ, 
+                            blt10_20yrs80occ, blt20_30yrs80occ, blt30_40yrs80occ, blt40_yrs80occ,
+                          detach80occ, attach80occ, mobile80occ, occupied80,
+                          pop_den8, shrblk8, shrhsp8, child8, shrfor8, ffh8,
+                          hsdrop8, no_hs_diploma8, ba_or_better8, unemprt8, povrat8, 
+                          welfare8, avhhin8) %>%
+                gather(key = variable, value = value, - npl2000_f) %>%
+                group_by(npl2000_f, variable) %>%
+                summarise(value = list(value)) %>%
+                spread(npl2000_f, value) %>%
+                group_by(variable) %>%
+                mutate(p_value = t.test(unlist(OnList), unlist(NotOnList))$p.value,
+                       t_value = t.test(unlist(OnList), unlist(NotOnList))$statistic) %>%
+                select(variable, p_value, t_value)
+print(ttest_1)
+
+# Using "sitecovariates.dta", compare covarites between census tracts with HRS test score from 1982 above and below 28.5.
+# Note: variable "old8" is not available in "allcovariates.dta"
+ttest_2 <- sitecovariates %>%
+                mutate(above = ifelse(hrs_82 > 28.5, "Above", "Below")) %>%
+                select(above, 
+                          smhse8, tothsun8, ownocc8, firestoveheat80, 
+                          noaircond80, nofullkitchen80, zerofullbath80, 
+                          bedrms0_80occ, bedrms1_80occ, bedrms2_80occ, 
+                            bedrms3_80occ, bedrms4_80occ, bedrms5_80occ,
+                          blt0_1yrs80occ, blt2_5yrs80occ, blt6_10yrs80occ, 
+                            blt10_20yrs80occ, blt20_30yrs80occ, blt30_40yrs80occ, blt40_yrs80occ,
+                          detach80occ, attach80occ, mobile80occ, occupied80,
+                          pop_den8, shrblk8, shrhsp8, child8, shrfor8, ffh8,
+                          hsdrop8, no_hs_diploma8, ba_or_better8, unemprt8, povrat8, 
+                          welfare8, avhhin8) %>%
+                gather(key = variable, value = value, - above) %>%
+                group_by(above, variable) %>%
+                summarise(value = list(value)) %>%
+                spread(above, value) %>%
+                group_by(variable) %>%
+                mutate(p_value = t.test(unlist(Above), unlist(Below))$p.value,
+                       t_value = t.test(unlist(Above), unlist(Below))$statistic) %>%
+                select(variable, p_value, t_value)
+print(ttest_2)
+
+# Using "sitecovaraites.dta", compare covarites between census tracts with HRS test score from 1982 of 28.5-40.5 and 16.5-28.5.
+ttest_3 <- sitecovariates %>%
+                filter(hrs_82 >= 16.5 & hrs_82 <= 40.5) %>%
+                mutate(justabove = ifelse(hrs_82 > 28.5, "JustAbove", "JustBelow")) %>%
+                select(justabove, 
+                          smhse8, tothsun8, ownocc8, firestoveheat80, 
+                          noaircond80, nofullkitchen80, zerofullbath80, 
+                          bedrms0_80occ, bedrms1_80occ, bedrms2_80occ, 
+                            bedrms3_80occ, bedrms4_80occ, bedrms5_80occ,
+                          blt0_1yrs80occ, blt2_5yrs80occ, blt6_10yrs80occ, 
+                            blt10_20yrs80occ, blt20_30yrs80occ, blt30_40yrs80occ, blt40_yrs80occ,
+                          detach80occ, attach80occ, mobile80occ, occupied80,
+                          pop_den8, shrblk8, shrhsp8, child8, shrfor8, ffh8,
+                          hsdrop8, no_hs_diploma8, ba_or_better8, unemprt8, povrat8, 
+                          welfare8, avhhin8) %>%
+                gather(key = variable, value = value, - justabove) %>%
+                group_by(justabove, variable) %>%
+                summarise(value = list(value)) %>%
+                spread(justabove, value) %>%
+                group_by(variable) %>%
+                mutate(p_value = t.test(unlist(JustAbove), unlist(JustBelow))$p.value,
+                       t_value = t.test(unlist(JustAbove), unlist(JustBelow))$statistic) %>%
+                select(variable, p_value, t_value)
+print(ttest_3)
+```
+
+In the three tables above, we check for balance of covariates (same ones used in 1(a)) across three potential treatment and control groups. In the first specification, treatment group is tracts on NPL list by 2000 and control is the counterpart. In the corresponding table, we can see that means are statistically significantly different on most variables across the two groups. In the second specification, treatment group is census tracts with HRS score in 1982 above 28.5 and control goups is census tracts with score below 28.5. And the tracts without HRS testing in 1982 are omitted. Comparing across 37 covariates, we can again see that on 16 covariates there is statistically significant difference between the two groups. In the final specification, we get closer to treatment and control groups we would use in Regression Discontinuity design. We can see that p_values are significantly larger and we seeem to observe balance across most covariates. Hence, except for which tracts were placed on NPL list or not, the two groups look similar on average on observable dimensions.
+
+
+
+\newpage
+<!--=========================================================================-->
+# Problem 2
+<!--=========================================================================-->
+**This question examines the possibility of using a Regression Discontinuity research design. Note that the rest of the empirical question will use the file 2miledata.dta. The housing variables in this file are 2 mile averages.**
+
+
+
+## Part (a)
+**Consider the HRS score as the running variable for an RD research design. What assumptions are needed on the HRS score? How do each of the following "facts" impact the appropriateness of these assumptions:**
+
+The assumptions we need to hold for a cutoff to be useful in an RD setting are that 
+(1) The probability of treatment (NPL) should change discontinuously at the threshold of running variable (HRS). 
+(2) We should not see bunching around the threshold, which may be indicative of manipulation in treatment status.
+
+Assumption (1) is not an issue in this setting since the cutoff was strict. Therefore, the following could either support assumption (2) or call it into question.
+
+### ------ a.i
+**The EPA assertion that \the 28.5 cutoff was selected because it produced a manageable number of sites." **
+
+This might cause one to question assumption (2) because it introduces a sense that 28.5 was chosen intentionally rather than at random. Imagine, for instance, that if the regulators are selecting the cutoff based on manageability, then the regulators might line up all of the projects by their scores and determine the cutoff at a cleanup-cost discontinuity.
+
+### ------ a.ii
+**None of the individuals involved in identifying the site, testing the level of pollution, or running the 1982 HRS test knew the cutoff threshold score. **
+
+If true, then the data were not gathered with any knowledge of the cutoff ex ante, which make assumption (2) a little more likely to hold.
+
+### ------ a.iii
+**EPA documentation emphasizes that the HRS test is an imperfect scoring measure. **
+
+If the HRS test is an imperfect measure, then this also supports assumption (2). The more imperfect HRS is, the more comparable are the treated and untreated groups and therefore the more "randomly" the threshold is likely to have been assigned.
+
+\newpage
+## Part (b)
+**Create a histogram of the distribution (i.e. density) of the 1982 HRS scores by dividing the HRS score into non-overlapping bins. Include a vertical line at 28.5. Next, run local linear regressions on either side of 28.5 using the midpoints of the bins as the data. What do you conclude?**
+
+```{R}
+summary(twomiledata$hrs_82)
+
+################ Make histogram
+
+twomiledata_split <- twomiledata %>%
+  mutate(hrs_82_1 = ifelse(hrs_82>28.5,  NA, hrs_82),
+         hrs_82_0 = ifelse(hrs_82<28.5,  NA, hrs_82))
+
+min_hrs <- min(twomiledata_split$hrs_82)
+max_hrs <- max(twomiledata_split$hrs_82) + 1.5
+ax1 <-seq(min_hrs, 28.5,by = 1.5)
+ax0 <-seq(30, max_hrs, by = 1.5)
+ax <- c(ax1, ax0)
+
+hg1 <- hist(twomiledata_split$hrs_82_1, breaks = ax, plot = F)
+hg0 <- hist(twomiledata_split$hrs_82_0, breaks = ax, plot = F)
+
+plot(hg0)
+plot(hg1, add = T)
+abline(v = 28.5, col = "red")
+
+################# Local Linear Reg
+
+
+
+```
+
+\newpage
+<!--=========================================================================-->
+# Problem 3
+<!--=========================================================================-->
+**This question examines the 1st stage equation of an RD design using the 1982 HRS score.**
+
+
+## Part (a)
+**Use a 2SLS (IV) econometric setup that uses whether or not a census tract has a site scoring above/below 28.5 as the instrument. Write down the 1st stage equation. Run the 1st stage regression experimenting with the same set of covariates used in question (1). In addition, run a second specification in which you limit the sample to only those census tracts with sites between 16.5 and 40.5 and run the specification using all of the control variables (we will use this as the size of the bandwidth for the "regression discontinuity" regression). Interpret the results.**
+
+
+
+\begin{align*}
+\intertext{Equaions for 2SLS Set Up}
+\intertext{1st Stage}
+NPL2000_{i,s} = \alpha_1 + \beta_{1,1} 1(HRS1982 > 28.5)_i + \beta_{1,2} Covariates_{i} + \beta_{1,3} \theta_s + v_{i,s}
+\intertext{2nd Stage}
+HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} 1(HRS1982 > 28.5)_i + \beta_{2,2} Covariates_{i} + \beta_{2,3} \theta_s + \epsilon_{i,s}
+\end{align*}
+
+
+```{r}
+names(twomiledata) <- sub("\\_nbr$", "", names(twomiledata))
+
+# Run 1st stage regression (as written above)
+twomiledata$ind_hrsabove = twomiledata$hrs_82 >= 28.5
+Formula4 <- formula(paste("npl2000 ~ ind_hrsabove + ", paste(c(HousingChar, EconNDemo), collapse=" + "), " | statefips"))
+
+reg3a_1 <- felm(Formula4, data = twomiledata)
+
+# Run 1st stage regression (limiting to tracts with HRS_82 between 16.5 and 40.5)
+
+twomiledata_subset <- twomiledata[twomiledata$hrs_82 >= 16.5,]
+twomiledata_subset <- twomiledata_subset[twomiledata_subset$hrs_82 <= 40.5,]
+
+reg3a_2 <- felm(Formula4, data = twomiledata_subset)
+
+# Output Table
+stargazer(reg3a_1,reg3a_2,
+          se = list(reg3a_1$rse, reg3a_2$rse),
+          keep = "ind_hrsabove", type = "text", omit.stat = "f")
+
+```
+
+
+## Part (b)
+**Create a graph plotting the the 1982 HRS score against whether a site is listed on the NPL by year 2000 (NPL on the y-axis, HRS on the x -axis). Briefly explain and interpret this graph.**
+
+```{r}
+plot(twomiledata$hrs_82, twomiledata$npl2000,
+  xlab = "HRS Score in 1982", ylab = "Whether on NPL by Year 2000")
+  abline(v = 28.5, lty = 3, col = 2, lwd = 2)
+```
+
+
+## Part (c)
+**Create a graph that plots the 1982 HRS score against 1980 property values (property values on the y-axis, HRS on the x -axis). What do you conclude from this graph?**
+
+```{r}
+plot(twomiledata$hrs_82, twomiledata$lnmeanhs8,
+  xlab = "HRS Score in 1982", ylab = "Median House Value in 1980")
+  abline(v = 28.5, lty = 3, col = 2, lwd = 2)
+```
+
+
+
+
+
+\newpage
+<!--=========================================================================-->
+# Problem 4
+<!--=========================================================================-->
+**Write down the 2nd stage equation (with housing values as the out-come) and the 2 standard assumptions for valid IV estimation. Run 2SLS to get the estimated coefficient on 2000 NPL status. Run the same two specifications as in the previous question. Briefly interpret the results.**
+
+\begin{align*}
+\intertext{Equaions for 2SLS Set Up}
+\intertext{1st Stage}
+NPL2000_{i,s} = \alpha_1 + \beta_{1,1} 1(HRS1982 > 28.5)_i + \beta_{1,2} Covariates_{i} + \beta_{1,3} \theta_s + v_{i,s}
+\intertext{2nd Stage}
+HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} 1(HRS1982 > 28.5)_i + \beta_{2,2} Covariates_{i} + \beta_{2,3} \theta_s + \epsilon_{i,s}
+\end{align*}
+
+
+
+
+
+
+\newpage
+<!--=========================================================================-->
+# Problem 5
+<!--=========================================================================-->
+**Write a 1 paragraph conclusion summarizing your findings and interpreting the results. Be sure to comment on how the evidence from this problem set supports the primary research question.**
+
+
+
+
+
+
+
+
+\newpage
+# Appendix A: R Code
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
