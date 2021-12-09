@@ -94,7 +94,7 @@ The assumptions we need to hold for a cutoff to be useful in an RD setting are t
 (1) The probability of treatment (NPL) should change discontinuously at the threshold of running variable (HRS). 
 (2) We should not see bunching around the threshold, which may be indicative of manipulation in treatment status.
 
-Assumption (1) is not an issue in this setting since the cutoff was strict. Therefore, the following could either support assumption (2) or call it into question.
+Assumption (1) is not an huge issue in this setting since the cutoff was strict in one direction. The fact that is is not strict in the other direction, however, makes us think it could be a slight concern. The following could either support assumption (2) or call it into question.
 
 ### ------ a.i
 **The EPA assertion that \the 28.5 cutoff was selected because it produced a manageable number of sites." **
