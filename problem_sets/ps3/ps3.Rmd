@@ -127,6 +127,10 @@ reg1a4 = data1a %>%
     lm(lnmdvalhs0 ~ ., data=.) %>%
     coeftest(vcov = vcovHC(., type = "HC0"))
 
+reg1a4_names = data1a %>%
+    select(everything(), -fips, -state, statefips) %>%
+    names()
+
 ```
 
 ```{r Regressions 1a table, results='asis'}
@@ -164,9 +168,95 @@ housing, economic, and demographic characteristics of the census tract.
 
 
 
+
+
+
+
+
 \newpage
 ## Part (b)
-**Here we will compare covariates between potential treatment and comparison groups. First, use allcovariates.dta to compare co-variates (i.e. those used in the above regressions) between census tracts with and without a hazardous waste site listed on the NPL by 2000. Next, use sitecovariates.dta to compare covariates between those census tracts with a hazardous waste site that had an HRS test in 1982. Specifically, compare those with sites that scored above 28.5 to those that scored below 28.5. Finally, compare those census tracts with sites between 16.5 and 28.5 to census tracts with sites between 28.5 and 40.5. What conclusions do you draw from these 3 comparisons?**
+**Here we will compare covariates between potential treatment and comparison groups. First, use allcovariates.dta to compare covariates (i.e. those used in the above regressions) between census tracts with and without a hazardous waste site listed on the NPL by 2000. Next, use sitecovariates.dta to compare covariates between those census tracts with a hazardous waste site that had an HRS test in 1982. Specifically, compare those with sites that scored above 28.5 to those that scored below 28.5. Finally, compare those census tracts with sites between 16.5 and 28.5 to census tracts with sites between 28.5 and 40.5. What conclusions do you draw from these 3 comparisons?**
+
+```{r Load allsites and create datasets}
+# Load all sites data
+data1b = read_dta('allcovariates.dta') %>%
+    distinct()
+
+x = reg1a4_names[! reg1a4_names %in% c('statefips', 'old8', 'lnmeanhs8', 'lnmdvalhs0')]
+
+```
+
+```{r Love plot for NPL2000, results='asis'}
+data1b_aaron = read_dta('allcovariates.dta') %>%
+    distinct() %>%
+    select(npl2000, pop_den8, shrblk8, shrhsp8, child8, shrfor8, ffh8, smhse8, 
+           hsdrop8, no_hs_diploma8, ba_or_better8, unemprt8, povrat8, welfare8, 
+           avhhin8, tothsun8, ownocc8, firestoveheat80, noaircond80, 
+           nofullkitchen80, zerofullbath80, bedrms1_80occ, bedrms2_80occ, 
+           bedrms3_80occ, bedrms4_80occ, bedrms5_80occ, blt2_5yrs80occ, 
+           blt6_10yrs80occ, blt10_20yrs80occ, blt20_30yrs80occ, blt30_40yrs80occ,
+           blt40_yrs80occ, attach80occ, mobile80occ, occupied80)
+
+data1b_aaron %>%
+    love.plot(., treat='npl2000', data=.,
+            stats=c("m", "v"))
+
+data1b_aaron %>%
+    select(npl2000) %>%
+    data.frame() %>%
+    stargazer(omit.summary.stat = c('sd', 'p25', 'p75'), header=F)
+
+```
+
+
+```{r Love plot for HRS test in 1982 geq 28.5, results='asis'}
+library(kableExtra)
+read_dta('sitecovariates.dta') %>%
+    select(all_of(x), hrs_82) %>%
+    mutate(treat = ifelse(hrs_82 >= 28.5, 1, 0)) %>%
+    love.plot(., treat='treat', data=.,
+            stats=c("m", "v"))
+
+read_dta('sitecovariates.dta') %>%
+    select(all_of(x), hrs_82) %>%
+    mutate(treat = ifelse(hrs_82 >= 28.5, 1, 0)) %>%
+    select(treat) %>%
+    data.frame() %>%
+    stargazer(omit.summary.stat = c('sd', 'p25', 'p75'), header=F)
+
+```
+
+
+```{r Love plot for HRS test in 1982 geq 28.5 between 16.5 and 40.5, results='asis'}
+# 16.5 and 28.5 to census tracts with sites between 28.5 and 40.5
+library(kableExtra)
+read_dta('sitecovariates.dta') %>%
+    select(all_of(x), hrs_82, -npl2000) %>%
+    mutate(treat = case_when(hrs_82 >= 16.5 & hrs_82 < 28.5 ~ 0,
+                             hrs_82 >= 28.5 & hrs_82 < 40.5 ~ 1,
+                             TRUE ~ as.numeric(NA))) %>%
+    filter(!is.na(treat)) %>%
+    love.plot(., treat='treat', data=.,
+            stats=c("m", "v"))
+
+read_dta('sitecovariates.dta') %>%
+    select(all_of(x), hrs_82, -npl2000) %>%
+    mutate(treat = case_when(hrs_82 >= 16.5 & hrs_82 < 28.5 ~ 0,
+                             hrs_82 >= 28.5 & hrs_82 < 40.5 ~ 1,
+                             TRUE ~ as.numeric(NA))) %>%
+    filter(!is.na(treat)) %>%
+    select(treat) %>%
+    data.frame() %>%
+    stargazer(omit.summary.stat = c('sd', 'p25', 'p75'), header=F)
+
+```
+
+
+
+
+
+
+
 
 
 
@@ -177,19 +267,39 @@ housing, economic, and demographic characteristics of the census tract.
 <!--=========================================================================-->
 # Problem 2
 <!--=========================================================================-->
-**This question examines the possibility of using a Regression Discontinuity research design. Note that the rest of the empirical question will use the file 2miledata.dta. The housing variables in this file are 2 mile averages.**
+**This question examines the possibility of using a Regression Discontinuity
+research design. Note that the rest of the empirical question will use the file
+2miledata.dta. The housing variables in this file are 2 mile averages.**
 
 
 ## Part (a)
-**Consider the HRS score as the running variable for an RD research design. What assumptions are needed on the HRS score? How do each of the following "facts" impact the appropriateness of these assumptions:**
+**Consider the HRS score as the running variable for an RD research design. What
+assumptions are needed on the HRS score? How do each of the following "facts"
+impact the appropriateness of these assumptions:**
+
+
+
+
 
 ### ------ a.i
-**The EPA assertion that the 28.5 cutooff was selected because it produced a manageable number of sites." **
+**The EPA assertion that the 28.5 cutoff was selected because it produced a
+manageable number of sites." **
+
+
+
+
+
+
 
 
 
 ### ------ a.ii
-**None of the individuals involved in identifying the site, testing the level of pollution, or running the 1982 HRS test knew the cutoff threshold score. **
+**None of the individuals involved in identifying the site, testing the level of
+pollution, or running the 1982 HRS test knew the cutoff threshold score. **
+
+
+
+
 
 
 
@@ -205,8 +315,42 @@ housing, economic, and demographic characteristics of the census tract.
 
 \newpage
 ## Part (b)
-**Create a histogram of the distribution (i.e. density) of the 1982 HRS scores by dividing the HRS score into non-overlapping bins. Include a vertical line at 28.5. Next, run local linear regressions on either side of 28.5 using the midpoints of the bins as the data. What do you conclude?**
+**Create a histogram of the distribution (i.e. density) of the 1982 HRS scores
+by dividing the HRS score into non-overlapping bins. Include a vertical line at
+28.5. Next, run local linear regressions on either side of 28.5 using the
+midpoints of the bins as the data. What do you conclude?**
 
+
+```{r Plot narrower local linear regressions}
+h = 1.5
+cutpoints = seq(16.5, 40.5, by=1.5)
+midpoints = seq(16.5+h/2, 40.5-h/2, by=1.5)
+# Create counts for each bin
+cut(read_dta('sitecovariates.dta')$hrs_82, 
+                  breaks=cutpoints, 
+                  include.lowest=TRUE, 
+                  right=FALSE,
+    labels=midpoints) %>%
+    summary() %>%
+    data.frame() %>%
+    rename(count = ".") %>%
+    mutate(midpoint = rownames(.)) %>%
+    filter(midpoint != "NA's") %>%
+    mutate(midpoint = as.numeric(midpoint),
+           treat = ifelse(midpoint > 28.5, 1, 0)) %>%
+    ggplot(aes(x=midpoint, y=count, group = factor(treat))) + geom_col() +
+    # Linear regressions on either side of the threshold
+    geom_smooth(method=lm, se=T) +
+    geom_vline(aes(xintercept=28.5), color = 'red', size=3) +
+    xlab('HRS score in 1982') +
+    ggtitle('Counts of HRS site scores', subtitle = 'Linear regressions using counts and bin midpoints') +
+    annotate(geom = "segment", x = 24.1, y = 20, xend = 28, yend = 20,
+             arrow = arrow(length = unit(2, "mm"))) +
+    annotate(geom = "text", x = 24, y = 20, 
+             label = "HRS Score Threshold (28.5)", 
+             hjust = "right")
+
+```
 
 
 
