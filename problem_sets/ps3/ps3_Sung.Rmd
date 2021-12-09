@@ -267,7 +267,36 @@ lines(data_hist$mid[data_hist$mid < 28.5], reg_under) +
 lines(data_hist$mid[data_hist$mid > 28.5], reg_over)
 ```
 
+```{r Plot narrower local linear regressions}
+h = 1.5
+cutpoints = seq(16.5, 40.5, by=1.5)
+midpoints = seq(16.5+h/2, 40.5-h/2, by=1.5)
+# Create counts for each bin
+cut(read_dta('sitecovariates.dta')$hrs_82, 
+                  breaks=cutpoints, 
+                  include.lowest=TRUE, 
+                  right=FALSE,
+    labels=midpoints) %>%
+    summary() %>%
+    data.frame() %>%
+    rename(count = ".") %>%
+    mutate(midpoint = rownames(.)) %>%
+    filter(midpoint != "NA's") %>%
+    mutate(midpoint = as.numeric(midpoint),
+           treat = ifelse(midpoint > 28.5, 1, 0)) %>%
+    ggplot(aes(x=midpoint, y=count, group = factor(treat))) + geom_col() +
+    # Linear regressions on either side of the threshold
+    geom_smooth(method=lm, se=T) +
+    geom_vline(aes(xintercept=28.5), color = 'red', size=3) +
+    xlab('HRS score in 1982') +
+    ggtitle('Counts of HRS site scores', subtitle = 'Linear regressions using counts and bin midpoints') +
+    annotate(geom = "segment", x = 24.1, y = 20, xend = 28, yend = 20,
+             arrow = arrow(length = unit(2, "mm"))) +
+    annotate(geom = "text", x = 24, y = 20, 
+             label = "HRS Score Threshold (28.5)", 
+             hjust = "right")
 
+```
 
 
 
