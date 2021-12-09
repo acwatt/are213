@@ -120,14 +120,6 @@ If the HRS test is an imperfect measure, then this also supports assumption (2).
 
 
 
-
-
-
-
-
-
-
-
 \newpage
 <!--=========================================================================-->
 # Problem 3
@@ -139,15 +131,64 @@ If the HRS test is an imperfect measure, then this also supports assumption (2).
 **Use a 2SLS (IV) econometric setup that uses whether or not a census tract has a site scoring above/below 28.5 as the instrument. Write down the 1st stage equation. Run the 1st stage regression experimenting with the same set of covariates used in question (1). In addition, run a second specification in which you limit the sample to only those census tracts with sites between 16.5 and 40.5 and run the specification using all of the control variables (we will use this as the size of the bandwidth for the "regression discontinuity" regression). Interpret the results.**
 
 
+
+\begin{align*}
+\intertext{Equaions for 2SLS Set Up}
+\intertext{1st Stage}
+NPL2000_{i,s} = \alpha_1 + \beta_{1,1} 1(HRS1982 > 28.5)_i + \beta_{1,2} Covariates_{i} + \beta_{1,3} \theta_s + v_{i,s}
+\intertext{2nd Stage}
+HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} \hat{NPL_{i,2000}} + \beta_{2,2} Covariates_{i} + \beta_{2,3} \theta_s + \epsilon_{i,s}
+\intertext{Note: $\theta_s$ is state fixed effects.}
+\end{align*}
+
+```{r}
+names(twomiledata) <- sub("\\_nbr$", "", names(twomiledata))
+
+# Run 1st stage regression (as written above)
+twomiledata$ind_hrsabove = twomiledata$hrs_82 >= 28.5
+Formula4 <- formula(paste("npl2000 ~ ind_hrsabove + ", paste(c(HousingChar, EconNDemo), collapse=" + "), " | statefips"))
+
+reg3a_1 <- felm(Formula4, data = twomiledata)
+
+# Run 1st stage regression (limiting to tracts with HRS_82 between 16.5 and 40.5)
+
+twomiledata_subset <- twomiledata[twomiledata$hrs_82 >= 16.5,]
+twomiledata_subset <- twomiledata_subset[twomiledata_subset$hrs_82 <= 40.5,]
+
+reg3a_2 <- felm(Formula4, data = twomiledata_subset)
+
+# Output Table
+stargazer(reg3a_1,reg3a_2,
+          se = list(reg3a_1$rse, reg3a_2$rse),
+          keep = "ind_hrsabove", type = "text", omit.stat = "f")
+
+```
+
+From this, we can conclude that NPL2000 is extremely predictive in the first stage! This implies that we were wise to use the IV approach before running the second stage reduced form.
+
 ## Part (b)
 **Create a graph plotting the the 1982 HRS score against whether a site is listed on the NPL by year 2000 (NPL on the y-axis, HRS on the x -axis). Briefly explain and interpret this graph.**
 
+```{r}
+plot(twomiledata$hrs_82, twomiledata$npl2000,
+  xlab = "HRS Score in 1982", ylab = "Whether on NPL by Year 2000")
+  abline(v = 28.5, lty = 3, col = 2, lwd = 2)
+```
+
+Above graph demonstrates that we have a clear break at threshold but the cut-off is not as perfect for strict RD design. Rather, we may want to consider Fuzzy RD design. The few census tracts that has lower than 28.5 points on HRS score in 1982 measure but still manages to get on NPL by 2000 could perhaps (1) receive higher score on on HRS in proceeding years, getting onto NPL before 2000, or (2) could potentially have other reasons, i.e. political connections or pressure, for getting onto the list.
 
 ## Part (c)
 **Create a graph that plots the 1982 HRS score against 1980 property values (property values on the y-axis, HRS on the x -axis). What do you conclude from this graph?**
 
+```{r}
+plot(twomiledata$hrs_82, twomiledata$lnmeanhs8,
+  xlab = "HRS Score in 1982", ylab = "Median House Value in 1980")
+  abline(v = 28.5, lty = 3, col = 2, lwd = 2)
+  abline(lm(lnmeanhs8 ~ hrs_82, data = twomiledata), col = "blue")
+   
+```
 
-
+While median house price is definitely correlated with HRS score, it seems to be continuous around the threshold and therefore satisfies our assumptions for RD design.
 
 
 
@@ -157,11 +198,35 @@ If the HRS test is an imperfect measure, then this also supports assumption (2).
 <!--=========================================================================-->
 **Write down the 2nd stage equation (with housing values as the out-come) and the 2 standard assumptions for valid IV estimation. Run 2SLS to get the estimated coefficient on 2000 NPL status. Run the same two specifications as in the previous question. Briefly interpret the results.**
 
+\begin{align*}
+\intertext{Equaions for 2SLS Set Up}
+\intertext{1st Stage}
+NPL2000_{i,s} = \alpha_1 + \beta_{1,1} 1(HRS1982 > 28.5)_i + \beta_{1,2} Covariates_{i} + \beta_{1,3} \theta_s + v_{i,s}
+\intertext{2nd Stage}
+HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} \hat{NPL_{i,2000}} + \beta_{2,2} Covariates_{i} + \beta_{2,3} \theta_s + \epsilon_{i,s}
+\intertext{Note: $\theta_s$ is state fixed effects.}
+\end{align*}
+
+The standard assumptions for valid IV estimation is (1) Cov(HSR1982, \epsilon_{i,s}) = 0 and (2) Cov(HSR1982, NPL2000) =/= 0.
+
+```{r}
+# Run 2SLS (tracts with HRS_82 below 28.5 and above)
+twomiledata$PredNPL <- reg3a_1$fitted.values
+Formula5 <- formula(paste("lnmdvalhs0 ~ PredNPL + ", paste(c(HousingChar, EconNDemo), collapse=" + "), " | statefips"))
+reg4_1 <- felm(Formula5, data = twomiledata)
 
 
+# Run 2SLS (limiting to tracts with HRS_82 between 16.5 and 40.5)
+twomiledata_subset$PredNPL <- reg3a_2$fitted.values
+reg4_2 <- felm(Formula5, data = twomiledata_subset)
 
+# Output Table
+stargazer(reg4_1, reg4_2,
+          se = list(reg4_1$rse, reg4_2$rse),
+          keep = "PredNPL", type = "text", omit.stat = "f")
+```
 
-
+In the IV (2SLS) methods, both specification lead to statistically insignificant coefficient. Hence, we observe that impact of being put on NPL list by 2000 leads to little change in value of homes from 1980 to 2000. 
 
 
 \newpage
@@ -170,8 +235,7 @@ If the HRS test is an imperfect measure, then this also supports assumption (2).
 <!--=========================================================================-->
 **Write a 1 paragraph conclusion summarizing your findings and interpreting the results. Be sure to comment on how the evidence from this problem set supports the primary research question.**
 
-
-
+In the above 2SLS procedure, we find that being placed on NPL by year 2000 seems to have statistically insignificant impact on housing prices. This would give interpretation that WTP or willingness to pay for hazardous waste is very small. However, we should note there could be additional factors why we get insignificant results. For example, if the clean-up has not started in many sites by year 2,000 and clean-up generally takes a long time, then not all the 'benefits' or 'willingness to pay for clean-up' may have been internalized by year 2000. In this case, running the analysis 10 years later with updated housing prices may give different result. Alternatively, clean-up process may cause negative externalities  (i.e. noise or trucks passing through) and depress housing demand while in progress and perhaps after clean-up is finished, given improved amenities, supply of housing increases. In any of these cases, results could be measuring something slightly other than Willingness to Pay for CleanUp.
 
 
 
