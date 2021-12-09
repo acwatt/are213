@@ -385,7 +385,7 @@ In the IV (2SLS) methods, both specification lead to statistically insignificant
 <!--=========================================================================-->
 **Write a 1 paragraph conclusion summarizing your findings and interpreting the results. Be sure to comment on how the evidence from this problem set supports the primary research question.**
 
-In the above 2SLS procedure, we find that being placed on NPL by year 2000 seems to have statistically insignificant impact on 
+In the above 2SLS procedure, we find that being placed on NPL by year 2000 seems to have statistically insignificant impact on housing prices. This would give interpretation that WTP or willingness to pay for hazardous waste is very small. However, we should note there could be additional factors why we get insignificant results. For example, if the clean-up has not started in many sites by year 2,000 and clean-up generally takes a long time, then not all the 'benefits' or 'willingness to pay for clean-up' may have been internalized by year 2000. In this case, running the analysis 10 years later with updated housing prices may give different result. Alternatively, clean-up process may cause negative externalities  (i.e. noise or trucks passing through) and depress housing demand while in progress and perhaps after clean-up is finished, given improved amenities, supply of housing increases. In any of these cases, results could be measuring something slightly other than Willingness to Pay for CleanUp.
 
 
 
