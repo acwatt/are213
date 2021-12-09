@@ -242,13 +242,30 @@ We want probability of treatment (NPL) to change discontinuously at the threshol
 
 
 
-
-
-
 \newpage
 ## Part (b)
 **Create a histogram of the distribution (i.e. density) of the 1982 HRS scores by dividing the HRS score into non-overlapping bins. Include a vertical line at 28.5. Next, run local linear regressions on either side of 28.5 using the midpoints of the bins as the data. What do you conclude?**
 
+```{r}
+#Setting bandwidth and bins
+h = 1.5
+bins = seq(from = 0, to = 75, by = h)
+#Creating histogram with density data
+hist_hrs82 <- hist(twomiledata$hrs_82, breaks = bins, freq = FALSE)
+data_hist <- data.frame(mid = hist_hrs82$mids, density = hist_hrs82$density)
+#Regression under
+reg_under = predict(lm(density ~ mid, subset(data_hist, mid < 28.5)))
+#Regression over
+reg_over = predict(lm(density ~ mid, subset(data_hist, mid > 28.5)))
+#Histogram with local linear regressions
+plot(hist_hrs82, main = "Checking for Bunching",
+     freq = FALSE,
+     xlim = c(0, 80),
+     xlab = "HRS Score in 1982") +
+abline(v = 28.5, lty = "dashed", col = "BLUE", lwd = 3) +
+lines(data_hist$mid[data_hist$mid < 28.5], reg_under) +
+lines(data_hist$mid[data_hist$mid > 28.5], reg_over)
+```
 
 
 
@@ -273,9 +290,9 @@ We want probability of treatment (NPL) to change discontinuously at the threshol
 \intertext{1st Stage}
 NPL2000_{i,s} = \alpha_1 + \beta_{1,1} 1(HRS1982 > 28.5)_i + \beta_{1,2} Covariates_{i} + \beta_{1,3} \theta_s + v_{i,s}
 \intertext{2nd Stage}
-HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} NPL_{i,2000} + \beta_{2,2} Covariates_{i} + \beta_{2,3} \theta_s + \epsilon_{i,s}
+HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} \hat{NPL_{i,2000}} + \beta_{2,2} Covariates_{i} + \beta_{2,3} \theta_s + \epsilon_{i,s}
+\intertext{Note: $\theta_s$ is state fixed effects.}
 \end{align*}
-
 
 ```{r}
 names(twomiledata) <- sub("\\_nbr$", "", names(twomiledata))
@@ -336,12 +353,30 @@ We are examining only one of the covariates against the runing variable. However
 \intertext{1st Stage}
 NPL2000_{i,s} = \alpha_1 + \beta_{1,1} 1(HRS1982 > 28.5)_i + \beta_{1,2} Covariates_{i} + \beta_{1,3} \theta_s + v_{i,s}
 \intertext{2nd Stage}
-HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} NPL_{i,2000} + \beta_{2,2} Covariates_{i} + \beta_{2,3} \theta_s + \epsilon_{i,s}
+HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} \hat{NPL_{i,2000}} + \beta_{2,2} Covariates_{i} + \beta_{2,3} \theta_s + \epsilon_{i,s}
+\intertext{Note: $\theta_s$ is state fixed effects.}
 \end{align*}
 
+The standard assumptions for valid IV estimation is (1) Cov(HSR1982, \epsilon_{i,s}) = 0 and (2) Cov(HSR1982, NPL2000) =/= 0.
+
+```{r}
+# Run 2SLS (tracts with HRS_82 below 28.5 and above)
+twomiledata$PredNPL <- reg3a_1$fitted.values
+Formula5 <- formula(paste("lnmdvalhs0 ~ PredNPL + ", paste(c(HousingChar, EconNDemo), collapse=" + "), " | statefips"))
+reg4_1 <- felm(Formula5, data = twomiledata)
 
 
+# Run 2SLS (limiting to tracts with HRS_82 between 16.5 and 40.5)
+twomiledata_subset$PredNPL <- reg3a_2$fitted.values
+reg4_2 <- felm(Formula5, data = twomiledata_subset)
 
+# Output Table
+stargazer(reg4_1, reg4_2,
+          se = list(reg4_1$rse, reg4_2$rse),
+          keep = "PredNPL", type = "text", omit.stat = "f")
+```
+
+In the IV (2SLS) methods, both specification lead to statistically insignificant coefficient. Hence, we observe that impact of being put on NPL list by 2000 leads to little change in value of homes from 1980 to 2000. 
 
 
 \newpage
@@ -350,7 +385,7 @@ HousingPrice2000_{i,s} = \alpha_2 + \beta_{2,1} NPL_{i,2000} + \beta_{2,2} Covar
 <!--=========================================================================-->
 **Write a 1 paragraph conclusion summarizing your findings and interpreting the results. Be sure to comment on how the evidence from this problem set supports the primary research question.**
 
-
+In the above 2SLS procedure, we find that being placed on NPL by year 2000 seems to have statistically insignificant impact on 
 
 
 
