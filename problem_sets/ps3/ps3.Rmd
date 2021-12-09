@@ -90,24 +90,26 @@ library(tinytex)
 ## Part (a)
 **Consider the HRS score as the running variable for an RD research design. What assumptions are needed on the HRS score? How do each of the following "facts" impact the appropriateness of these assumptions:**
 
+The assumptions we need to hold for a cutoff to be useful in an RD setting are that 
+(1) The probability of treatment (NPL) should change discontinuously at the threshold of running variable (HRS). 
+(2) We should not see bunching around the threshold, which may be indicative of manipulation in treatment status.
+
+Assumption (1) is not an issue in this setting since the cutoff was strict. Therefore, the following could either support assumption (2) or call it into question.
+
 ### ------ a.i
-**The EPA assertion that \the 28.5 cutooff was selected because it produced a manageable number of sites." **
+**The EPA assertion that \the 28.5 cutoff was selected because it produced a manageable number of sites." **
 
-
+This might cause one to question assumption (2) because it introduces a sense that 28.5 was chosen intentionally rather than at random. Imagine, for instance, that if the regulators are selecting the cutoff based on manageability, then the regulators might line up all of the projects by their scores and determine the cutoff at a cleanup-cost discontinuity.
 
 ### ------ a.ii
 **None of the individuals involved in identifying the site, testing the level of pollution, or running the 1982 HRS test knew the cutoff threshold score. **
 
-
+If true, then the data were not gathered with any knowledge of the cutoff ex ante, which make assumption (2) a little more likely to hold.
 
 ### ------ a.iii
 **EPA documentation emphasizes that the HRS test is an imperfect scoring measure. **
 
-
-
-
-
-
+If the HRS test is an imperfect measure, then this also supports assumption (2). The more imperfect HRS is, the more comparable are the treated and untreated groups and therefore the more "randomly" the threshold is likely to have been assigned.
 
 
 \newpage
