@@ -215,6 +215,72 @@ print(ttest_3)
 
 In the three tables above, we check for balance of covariates (same ones used in 1(a)) across three potential treatment and control groups. In the first specification, treatment group is tracts on NPL list by 2000 and control is the counterpart. In the corresponding table, we can see that means are statistically significantly different on most variables across the two groups. In the second specification, treatment group is census tracts with HRS score in 1982 above 28.5 and control goups is census tracts with score below 28.5. And the tracts without HRS testing in 1982 are omitted. Comparing across 37 covariates, we can again see that on 16 covariates there is statistically significant difference between the two groups. In the final specification, we get closer to treatment and control groups we would use in Regression Discontinuity design. We can see that p_values are significantly larger and we seeem to observe balance across most covariates. Hence, except for which tracts were placed on NPL list or not, the two groups look similar on average on observable dimensions.
 
+```{r Love plot for NPL2000, results='asis'}
+data1b_aaron = read_dta('allcovariates.dta') %>%
+    distinct() %>%
+    select(npl2000, pop_den8, shrblk8, shrhsp8, child8, shrfor8, ffh8, smhse8, 
+           hsdrop8, no_hs_diploma8, ba_or_better8, unemprt8, povrat8, welfare8, 
+           avhhin8, tothsun8, ownocc8, firestoveheat80, noaircond80, 
+           nofullkitchen80, zerofullbath80, bedrms1_80occ, bedrms2_80occ, 
+           bedrms3_80occ, bedrms4_80occ, bedrms5_80occ, blt2_5yrs80occ, 
+           blt6_10yrs80occ, blt10_20yrs80occ, blt20_30yrs80occ, blt30_40yrs80occ,
+           blt40_yrs80occ, attach80occ, mobile80occ, occupied80)
+
+data1b_aaron %>%
+    love.plot(., treat='npl2000', data=.,
+            stats=c("m", "v"))
+
+data1b_aaron %>%
+    select(npl2000) %>%
+    data.frame() %>%
+    stargazer(omit.summary.stat = c('sd', 'p25', 'p75'), header=F)
+
+```
+
+
+```{r Love plot for HRS test in 1982 geq 28.5, results='asis'}
+library(kableExtra)
+read_dta('sitecovariates.dta') %>%
+    select(all_of(x), hrs_82) %>%
+    mutate(treat = ifelse(hrs_82 >= 28.5, 1, 0)) %>%
+    love.plot(., treat='treat', data=.,
+            stats=c("m", "v"))
+
+read_dta('sitecovariates.dta') %>%
+    select(all_of(x), hrs_82) %>%
+    mutate(treat = ifelse(hrs_82 >= 28.5, 1, 0)) %>%
+    select(treat) %>%
+    data.frame() %>%
+    stargazer(omit.summary.stat = c('sd', 'p25', 'p75'), header=F)
+
+```
+
+
+```{r Love plot for HRS test in 1982 geq 28.5 between 16.5 and 40.5, results='asis'}
+# 16.5 and 28.5 to census tracts with sites between 28.5 and 40.5
+library(kableExtra)
+read_dta('sitecovariates.dta') %>%
+    select(all_of(x), hrs_82, -npl2000) %>%
+    mutate(treat = case_when(hrs_82 >= 16.5 & hrs_82 < 28.5 ~ 0,
+                             hrs_82 >= 28.5 & hrs_82 < 40.5 ~ 1,
+                             TRUE ~ as.numeric(NA))) %>%
+    filter(!is.na(treat)) %>%
+    love.plot(., treat='treat', data=.,
+            stats=c("m", "v"))
+
+read_dta('sitecovariates.dta') %>%
+    select(all_of(x), hrs_82, -npl2000) %>%
+    mutate(treat = case_when(hrs_82 >= 16.5 & hrs_82 < 28.5 ~ 0,
+                             hrs_82 >= 28.5 & hrs_82 < 40.5 ~ 1,
+                             TRUE ~ as.numeric(NA))) %>%
+    filter(!is.na(treat)) %>%
+    select(treat) %>%
+    data.frame() %>%
+    stargazer(omit.summary.stat = c('sd', 'p25', 'p75'), header=F)
+
+```
+
+
 
 
 \newpage
