@@ -3,8 +3,8 @@ title: "ARE 213 PS 3"
 author: "S. Sung, H. Husain, T. Woolley, A. Watt"
 date: "2021-12-8"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 header-includes:
 - \usepackage{dcolumn}
 - \usepackage{amsmath}
@@ -212,7 +212,7 @@ In the table (technically saved in dataframe format), we check for balance of co
 x <- c("smhse8", "tothsun8", "ownocc8", "firestoveheat80", "noaircond80", 
        "nofullkitchen80", "zerofullbath80", 
        "bedrms1_80occ", "bedrms2_80occ", "bedrms3_80occ", "bedrms4_80occ", "bedrms5_80occ",
-       "blt2_5yrs80occ", "blt6_10yrs80occ", "blt10_20yrs80occ", "blt20_30yrs80occ",                         "blt30_40yrs80occ", "blt40_yrs80occ",
+       "blt2_5yrs80occ", "blt6_10yrs80occ", "blt10_20yrs80occ", "blt20_30yrs80occ", "blt30_40yrs80occ", "blt40_yrs80occ",
        "detach80occ", "attach80occ", "mobile80occ", "occupied80",
        "pop_den8", "shrblk8", "shrhsp8", "child8", "shrfor8", "ffh8", 
        "hsdrop8", "no_hs_diploma8", "ba_or_better8", "unemprt8", "povrat8", 
@@ -221,8 +221,8 @@ x <- c("smhse8", "tothsun8", "ownocc8", "firestoveheat80", "noaircond80",
 allcovariates %>%
     distinct() %>%
     select(all_of(x), npl2000) %>%
-    love.plot(., treat='npl2000', data=.,
-            stats=c("m", "v"))
+    love.plot(., treat='npl2000', data=., limits = c(-1, 1),
+            stats="m")
 
 allcovariates %>%
     distinct() %>%
@@ -236,15 +236,16 @@ allcovariates %>%
 sitecovariates %>%
     select(all_of(x), hrs_82) %>%
     mutate(treat = ifelse(hrs_82 >= 28.5, 1, 0)) %>%
-    love.plot(., treat='treat', data=.,
-            stats=c("m", "v"))
+    select(all_of(x), treat) %>%
+    love.plot(., treat='treat', data=., limits = c(-1, 1),
+            stats="m")
 
 sitecovariates %>%
     select(all_of(x), hrs_82) %>%
     mutate(treat = ifelse(hrs_82 >= 28.5, 1, 0)) %>%
     select(treat) %>%
     data.frame() %>%
-    stargazer(omit.summary.stat = c('sd', 'p25', 'p75'), header=F)
+    stargazer(omit.summary.stat = c('sd', 'p25', 'p75'), header=F, type = "text")
 
 ```
 
@@ -257,8 +258,9 @@ sitecovariates %>%
                              hrs_82 >= 28.5 & hrs_82 < 40.5 ~ 1,
                              TRUE ~ as.numeric(NA))) %>%
     filter(!is.na(treat)) %>%
-    love.plot(., treat='treat', data=.,
-            stats=c("m", "v"))
+    select(all_of(x), treat) %>%
+    love.plot(., treat='treat', data=., limits = c(-1, 1),
+            stats="m")
 
 sitecovariates %>%
     select(all_of(x), hrs_82, -npl2000) %>%
@@ -268,9 +270,14 @@ sitecovariates %>%
     filter(!is.na(treat)) %>%
     select(treat) %>%
     data.frame() %>%
-    stargazer(omit.summary.stat = c('sd', 'p25', 'p75'), header=F)
+    stargazer(omit.summary.stat = c('sd', 'p25', 'p75'), header=F, type = "text")
 ```
 
+The three love plots above graphically depict the standardized difference of means and variance ratios between the NPL2000 groups. The rule of thumb is a standardized difference of means smaller than 0.25 in magnitude, ideally less than 0.1 and as close to 0 as possible. The rule of thumb for variance ratios is less than a factor of 2 (so between 0.5 and 2 in magnitude). 
+
+The first love plot is comparing the census tracts with and without a hazardous waste site listed on the NPL by 2000 (48,176 sites total, with 1.9% of them on the NPL). The second love plot comparing census tracts with a hazardous waste site that had an HRS test in 1982, above and below the 28.5 threshold (which is a significant reduction in sample size: 487 tracts with 62.8% above the threshold). We can see the difference in means and variance ratios for all our variables are getting closer to the rule of thumb above.
+
+The last love plot has census tracts with a hazardous waste site that had an HRS test in 1982 with an HRS score between 16.5 and 40.5, comparing tracts above and below the 28.5 threshold. This further restricts the sample to 227 tracts with 60.4% above the threshold. The standardized difference of means are not substantially different from the second plot but the variance ratios have gotten worse for some of our covariates.
 
 
 \newpage
@@ -361,9 +368,7 @@ cut(read_dta('sitecovariates.dta')$hrs_82,
              hjust = "right")
 
 ```
-
-
-
+In the first histogram, there seems to be difference between regression intercepts. However, in the second histogram, when we restrict the local regressions to only include histogram bars closer to the threshold (including 16.5 to 40.5), the difference between the regression intercepts seems to disappear. The confidence intervals also show that there is no discontinuity in the density of HRS scores at the HRS score threshold, which suggests that there was no gaming of the system. This makes the RD design more credible in the restricted sample.
 
 
 \newpage
