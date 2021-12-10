@@ -187,6 +187,7 @@ x = reg1a4_names[! reg1a4_names %in% c('statefips', 'old8', 'lnmeanhs8', 'lnmdva
 ```
 
 ```{r Love plot for NPL2000, results='asis'}
+library(cobalt)
 data1b_aaron = read_dta('allcovariates.dta') %>%
     distinct() %>%
     select(npl2000, pop_den8, shrblk8, shrhsp8, child8, shrfor8, ffh8, smhse8, 
@@ -196,6 +197,9 @@ data1b_aaron = read_dta('allcovariates.dta') %>%
            bedrms3_80occ, bedrms4_80occ, bedrms5_80occ, blt2_5yrs80occ, 
            blt6_10yrs80occ, blt10_20yrs80occ, blt20_30yrs80occ, blt30_40yrs80occ,
            blt40_yrs80occ, attach80occ, mobile80occ, occupied80)
+
+x = names(data1b_aaron)[! names(data1b_aaron) %in% c('statefips', 'old8', 'lnmeanhs8', 'lnmdvalhs0')]
+
 
 data1b_aaron %>%
     love.plot(., treat='npl2000', data=.,
@@ -212,8 +216,8 @@ data1b_aaron %>%
 ```{r Love plot for HRS test in 1982 geq 28.5, results='asis'}
 library(kableExtra)
 read_dta('sitecovariates.dta') %>%
-    select(all_of(x), hrs_82) %>%
     mutate(treat = ifelse(hrs_82 >= 28.5, 1, 0)) %>%
+    select(all_of(x), treat,  -npl2000) %>%
     love.plot(., treat='treat', data=.,
             stats=c("m", "v"))
 
@@ -231,11 +235,11 @@ read_dta('sitecovariates.dta') %>%
 # 16.5 and 28.5 to census tracts with sites between 28.5 and 40.5
 library(kableExtra)
 read_dta('sitecovariates.dta') %>%
-    select(all_of(x), hrs_82, -npl2000) %>%
     mutate(treat = case_when(hrs_82 >= 16.5 & hrs_82 < 28.5 ~ 0,
                              hrs_82 >= 28.5 & hrs_82 < 40.5 ~ 1,
                              TRUE ~ as.numeric(NA))) %>%
     filter(!is.na(treat)) %>%
+    select(all_of(x), treat, -npl2000) %>%
     love.plot(., treat='treat', data=.,
             stats=c("m", "v"))
 
